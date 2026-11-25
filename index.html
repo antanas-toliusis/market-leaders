@@ -139,6 +139,9 @@ th.tk{position:sticky;left:0;z-index:2}
 @media (max-width:720px){th[data-k="s"],td.sec{display:none}}
 .grid2 .panel>div[id]{overflow-x:auto}
 /* detail sheet */
+.dsetups{display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--muted)}
+.dsetups:empty{display:none}
+.dsetups b{color:var(--ink);font-weight:600}
 .charthead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 16px;flex-wrap:wrap}
 .charthead .legend{flex:1 1 360px;padding-top:6px}
 .chartbar{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:auto}
@@ -151,16 +154,11 @@ th.tk{position:sticky;left:0;z-index:2}
 .sheet header{align-items:flex-start}
 .sheet h3{font:700 22px var(--f-display);margin:0}
 .close{all:unset;cursor:pointer;font:500 13px var(--f-body);padding:6px 10px;border:1px solid var(--line);border-radius:8px}
-.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
-.kv div{background:var(--bg);border-radius:8px;padding:8px 10px}
-.kv .k{font-size:11.5px;color:var(--muted)}
-.kv .v{font:600 15px var(--f-mono)}
 canvas{width:100%;display:block}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
 @media (max-width:720px){
   .strip{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
   h1{font-size:24px}
   .sbar{grid-template-columns:120px 1fr 50px}
   input[type=search]{width:100%}
@@ -353,7 +351,7 @@ canvas{width:100%;display:block}
       <div><h3 id="dTitle">–</h3><div class="sub" id="dSub"></div></div>
       <button type="button" class="close" id="dClose">Close</button>
     </header>
-    <div class="kv" id="dKv"></div>
+    <div class="dsetups" id="dKv"></div>
     <div class="charthead">
       <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i>Price bars (open left, close right), up / down</span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
       <div class="chartbar"><div class="chartbtns"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><div class="seg" id="dRng" role="group" aria-label="How much history to show"><button type="button" data-v="1" aria-pressed="true">100%</button><button type="button" data-v="0.5" aria-pressed="false">50%</button><button type="button" data-v="0.25" aria-pressed="false">25%</button></div></div><div class="chartnotes"><span class="hint" id="dRngNote"></span> <span class="hint" id="dTfNote"></span></div></div>
@@ -785,9 +783,8 @@ function openDetail(t){
   const r=C.rows.find(x=>x.t===t);if(!r)return;
   $("dTitle").textContent=`${r.t} · ${r.n}`;
   $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}${r.md?` (no prices available for ${r.md.map(fmtDate).join(", ")})`:""}${r.gf?` · ${r.gf.length} recent session${r.gf.length>1?"s":""} filled from Yahoo Finance where the main data source had a gap`:""}`;
-  const k=[["RS rating",r.rating??"–"],["vs index 3M",pct(r.rel63)],["vs index 6M",pct(r.rel126)],["vs index 12M",pct(r.rel252)],["From 52w high",pct(r.off)],["RS line 52w high",r.nh?"Yes":"No"],["21-day EMA",r.e21?.toFixed(2)??"–"],["50-day avg",r.s50?.toFixed(2)??"–"],["200-day avg",r.s200?.toFixed(2)??"–"]];
-  $("dKv").innerHTML=k.map(([a,b])=>`<div><div class="k">${a}</div><div class="v">${b}</div></div>`).join("")+
-    (r.st?ST_ORDER.filter(x=>r.st[x]).map(x=>{const v=r.st[x];return `<div style="grid-column:1/-1"><div class="k">${esc(SETUPS[x].n)} · pivot ${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%)</div><div class="v" style="font:500 13.5px var(--f-body)">${esc(SETUPS[x].d(v))}</div></div>`}).join(""):"");
+  // chart setups, if any, as one compact line each (the stat tiles were removed to give the chart room)
+  $("dKv").innerHTML=r.st?ST_ORDER.filter(x=>r.st[x]).map(x=>{const v=r.st[x];return `<div><b>${esc(SETUPS[x].n)}</b> · pivot ${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%) · ${esc(SETUPS[x].d(v))}</div>`}).join(""):"";
   {const pk=r.st&&ST_ORDER.find(x=>r.st[x]);$("dVcpLeg").hidden=!pk;if(pk)$("dVcpTxt").textContent=`${SETUPS[pk].n} pivot, across the pattern`}
   $("scrim").classList.add("open");document.body.style.overflow="hidden";
   detailRow=r;
@@ -846,6 +843,7 @@ async function drawDetail(r){
   const nb=c.length-s0,unit=chartTf==="w"?"week":"session",span=chartTf==="w"?(nb>=104?(nb/52).toFixed(1)+" years":Math.round(nb/4.35)+" months"):(nb>=252?(nb/252).toFixed(1)+" years":Math.round(nb/21)+" months");
   $("dRngNote").textContent=`${nb} ${unit}s, about ${span}.`;
   const f=rsv.find(x=>x!=null);
+  fitPriceHeight();
   chart($("cPrice"),ser,col,false,{d:rsv.map(x=>x==null?null:x/f*100),c:col("--rs"),nh},dv,cdv);
   {const z=rsv[rsv.length-1];$("dRsNow").textContent=z&&f?`RS line ${z/f*100>=100?"+":""}${(z/f*100-100).toFixed(0)}% vs index over the chart${nh?", at a 52-week high":""}`:""}
   volChart($("cVol"),c,v,col,volN,s0);
@@ -857,6 +855,16 @@ async function drawDetail(r){
 $("dTf").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartTf=b.dataset.v;drawDetail(detailRow)});
 $("dRng").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartRange=+b.dataset.v;try{localStorage.setItem("ml-chart-range",String(chartRange))}catch(err){}drawDetail(detailRow)});
 
+// Make the price chart as tall as the popup allows without scrolling (300-720px; on narrow screens at most 1.3x its width).
+function fitPriceHeight(){
+  const cv=$("cPrice"),sheet=document.querySelector(".sheet"),scrim=$("scrim");
+  const pad=parseFloat(getComputedStyle(scrim).paddingTop)+parseFloat(getComputedStyle(scrim).paddingBottom);
+  const others=sheet.scrollHeight-cv.offsetHeight;
+  let hgt=Math.floor(innerHeight-pad-others-2);
+  hgt=Math.max(300,Math.min(720,hgt,cv.clientWidth<600?Math.round(cv.clientWidth*1.3):720));
+  cv.dataset.h=hgt;
+}
+addEventListener("resize",()=>{if(detailRow&&$("scrim").classList.contains("open"))drawDetail(detailRow)});
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
 function chart(cv,series,col,ref100,rs,dates,cd){
   dates=dates||D.dates;
