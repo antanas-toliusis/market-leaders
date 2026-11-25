@@ -538,7 +538,7 @@ function openDetail(t){
 }
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
 function chart(cv,series,col,ref100){
-  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+cv.getAttribute("height");
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   const all=series.flatMap(s=>s.d).filter(v=>v!=null);let mn=Math.min(...all),mx=Math.max(...all);const pad=(mx-mn)*.06||1;mn-=pad;mx+=pad;
   const L=46,R=8,T=8,B=20,n=series[0].d.length;
