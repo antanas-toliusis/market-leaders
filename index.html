@@ -91,6 +91,7 @@ th.tk{position:sticky;left:0;z-index:2}
 .pill.up{background:var(--up-soft);color:var(--up)}
 .pill.mid{background:var(--accent-soft);color:var(--accent)}
 .pill.dn{background:var(--down-soft);color:var(--down)}
+.tk span.stale{color:var(--warn);font-size:11.5px}
 .pill.vcp{background:var(--warn);color:#fff}
 .pill.hi{background:var(--accent);color:#fff}
 .sec{font-family:var(--f-body);font-size:12.5px;color:var(--muted)}
@@ -227,6 +228,7 @@ canvas{width:100%;display:block}
           <th data-k="rel252"><span class="ar">12M</span></th>
           <th class="l" data-k="rsTrend"><span class="ar">RS line, 6M</span></th>
           <th data-k="off"><span class="ar">From 52w high</span></th>
+          <th data-k="volx" title="Latest day's volume as a multiple of its 50-day average"><span class="ar">Vol vs 50d</span></th>
           <th class="l" data-k="trendScore"><span class="ar">Trend</span></th>
         </tr></thead>
         <tbody id="tb"></tbody>
@@ -247,7 +249,7 @@ canvas{width:100%;display:block}
     <section class="panel">
       <div class="ph"><h2 id="stListTitle">Matches</h2><span class="hint">Sorted by RS rating. Tap a stock for its chart and pivot.</span></div>
       <div class="tblwrap"><table>
-        <thead><tr><th class="l tk">Stock</th><th class="l">Sector</th><th>RS rating</th><th class="l">Setups</th><th>Pivot</th><th>Close vs pivot</th><th class="l">Pattern detail</th><th class="l">Trend</th></tr></thead>
+        <thead><tr><th class="l tk">Stock</th><th class="l">Sector</th><th>RS rating</th><th class="l">Setups</th><th>Pivot</th><th>Close vs pivot</th><th class="l">Pattern detail</th><th>Vol vs 50d</th><th class="l">Trend</th></tr></thead>
         <tbody id="stTb"></tbody></table></div>
       <div class="empty" id="stEmpty" hidden>No stocks show this setup right now.</div>
     </section>
@@ -284,6 +286,7 @@ canvas{width:100%;display:block}
     <b>RS 12M weighted</b> follows the IBD convention: 40% weight on the latest quarter and 20% on each of the three before it.
     <b>RS rating</b> is that weighted score's percentile among all S&amp;P 500 members (1–99); the index's own rating is shown in the summary, and only stocks above it are listed.
     The <b>RS line</b> is stock price ÷ index price; a rising line means the stock is outperforming.
+    <b>Vol vs 50d</b> is the latest day's volume divided by the average of the 50 days before it; 1.5× or more is bold, green on up days and red on down days.
     <b>Chart setups</b> (VCP, cup with handle, flat base, high tight flag, 3-weeks-tight, pocket pivot) are scanned nightly; the Strategies tab lists them with the exact rules.
     <b>Near MAs</b> keeps stocks closing at or just above all three of the 21-day EMA, 50-day and 200-day averages, by no more than the % you pick.
     Data: point-in-time S&amp;P 500 dataset (github.com/Johnbrick123/sp500-data, built from Yahoo Finance and cross-checked against Nasdaq), sector labels from the GICS list. This is a screen, not investment advice.
@@ -299,6 +302,8 @@ canvas{width:100%;display:block}
     <div class="kv" id="dKv"></div>
     <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span></div>
     <canvas id="cPrice" height="220"></canvas>
+    <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i>50-day average volume</span><span id="dVolNow"></span></div>
+    <canvas id="cVol" height="80"></canvas>
     <div class="legend"><span><i style="background:var(--accent)"></i>RS line (stock ÷ index), rebased to 100</span></div>
     <canvas id="cRS" height="150"></canvas>
   </div>
@@ -324,7 +329,7 @@ function compute(k=0){
   const n=D.dates.length-k;
   const b=D.bench[bench].slice(0,n);
   const bw=wscore(b);
-  const STK=k?D.stocks.map(s=>({...s,c:s.c.slice(0,n)})):D.stocks;
+  const STK=k?D.stocks.map(s=>({...s,c:s.c.slice(0,n),v:s.v&&s.v.slice(0,n)})):D.stocks;
   const scores=STK.map(s=>wscore(s.c));
   const valid=scores.filter(v=>v!=null).sort((x,y)=>x-y);
   const rankOf=v=>{if(v==null)return null;let lo=0,hi=valid.length;while(lo<hi){const m=(lo+hi)>>1;if(valid[m]<v)lo=m+1;else hi=m}return Math.max(1,Math.min(99,Math.round(lo/(valid.length-1)*98)+1))};
@@ -349,7 +354,9 @@ function compute(k=0){
     let beats;
     if(lb==="w")beats=w!=null&&bw!=null&&w>bw;else beats=r["rel"+lb]!=null&&r["rel"+lb]>0;
     const day=c[L]&&c[L-1]?c[L]/c[L-1]-1:null;
-    return {...s,...r,w,rating:rankOf(w),rs,nh,off,s50,s200,trendScore,rsTrend,beats,price:c[L],day,e21,maGap,maMin};
+    const vv=s.v,v50=vv&&vv.length>51?vv.slice(-51,-1).reduce((a,b)=>a+b,0)/50:0;
+    const volx=v50&&vv[vv.length-1]?vv[vv.length-1]/v50:null;
+    return {...s,...r,w,rating:rankOf(w),rs,nh,off,s50,s200,trendScore,rsTrend,beats,price:c[L],day,e21,maGap,maMin,volx};
   });
   const bday=b[b.length-1]/b[b.length-2]-1;
   return {rows,bw,benchRating,br,bday};
@@ -392,7 +399,7 @@ function renderTable(){
     const nh=(r.nh?' <span class="pill hi" title="RS line at a 52-week high">NH</span>':"")+badges(r);
     return `<tr tabindex="0" data-t="${esc(r.t)}">
       <td class="l rank">${rk.get(r.t)}</td>
-      <td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span></td>
+      <td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span>${stale(r)}</td>
       <td class="l sec">${esc(r.s)}</td>
       <td><span class="rs"><em>${r.rating??"–"}</em><span class="track"><i style="width:${r.rating??0}%"></i></span></span></td>
       <td class="${cls(r.rel21)}">${pct(r.rel21)}</td>
@@ -401,10 +408,13 @@ function renderTable(){
       <td class="${cls(r.rel252)}">${pct(r.rel252)}</td>
       <td class="l">${spark(r.rs.slice(-126),r.rsTrend)}${nh}</td>
       <td>${pct(r.off)}</td>
+      <td>${volCell(r)}</td>
       <td class="l">${tr}</td></tr>`}).join("");
   document.querySelectorAll("th[data-k]").forEach(th=>{const k=th.dataset.k;if(k===sortK)th.setAttribute("aria-sort",sortDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
 }
 
+const stale=r=>r.ld?`<span class="stale" title="The data source has no prices for this stock after ${fmtDate(r.ld)}; the last price is carried forward, so its recent figures are approximate.">prices to ${fmtDate(r.ld)}</span>`:"";
+function volCell(r){if(r.volx==null)return "–";const x=r.volx,c=x>=1.5?(r.day>=0?"pos":"neg"):"";return `<span class="${c}"${x>=1.5?' style="font-weight:600"':""}>${x.toFixed(1)}×</span>`}
 function spark(a,t){
   const v=a.filter(x=>x!=null);if(v.length<2)return "–";
   const w=96,h=24,mn=Math.min(...v),mx=Math.max(...v),sp=mx-mn||1;
@@ -450,9 +460,9 @@ function renderStrat(){
   $("stTb").innerHTML=list.map(r=>{
     const k=stSel==="all"?ST_ORDER.find(x=>r.st[x]):stSel,v=r.st[k];
     const tr=r.trendScore===3?'<span class="pill up">Uptrend</span>':r.trendScore===2?'<span class="pill mid">Mixed</span>':'<span class="pill dn">Weak</span>';
-    return `<tr tabindex="0" data-t="${esc(r.t)}"><td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span></td><td class="l sec">${esc(r.s)}</td>
+    return `<tr tabindex="0" data-t="${esc(r.t)}"><td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span>${stale(r)}</td><td class="l sec">${esc(r.s)}</td>
       <td>${ratingCell(r)}</td><td class="l">${badges(r)}</td><td>${v.p.toFixed(2)}</td><td class="${cls(v.pd)}">${v.pd>0?"+":""}${v.pd}%</td>
-      <td class="l det">${stSel==="all"?`<b>${esc(SETUPS[k].n)}:</b> `:""}${esc(SETUPS[k].d(v))}</td><td class="l">${tr}</td></tr>`}).join("");
+      <td class="l det">${stSel==="all"?`<b>${esc(SETUPS[k].n)}:</b> `:""}${esc(SETUPS[k].d(v))}</td><td>${volCell(r)}</td><td class="l">${tr}</td></tr>`}).join("");
   $("stRules").innerHTML=ST_ORDER.map(k=>`<dt>${esc(SETUPS[k].n)}</dt><dd>${esc(SETUPS[k].rule)}</dd>`).join("");
 }
 $("stCards").addEventListener("click",e=>{const b=e.target.closest(".scard");if(!b)return;stSel=b.dataset.k;renderStrat()});
@@ -519,7 +529,7 @@ $("viewDaily").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.tar
 function openDetail(t){
   const r=C.rows.find(x=>x.t===t);if(!r)return;
   $("dTitle").textContent=`${r.t} · ${r.n}`;
-  $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}`;
+  $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}${r.ld?` (data source has no prices after ${fmtDate(r.ld)})`:""}`;
   const k=[["RS rating",r.rating??"–"],["vs index 3M",pct(r.rel63)],["vs index 6M",pct(r.rel126)],["vs index 12M",pct(r.rel252)],["From 52w high",pct(r.off)],["RS line 52w high",r.nh?"Yes":"No"],["21-day EMA",r.e21?.toFixed(2)??"–"],["50-day avg",r.s50?.toFixed(2)??"–"],["200-day avg",r.s200?.toFixed(2)??"–"]];
   $("dKv").innerHTML=k.map(([a,b])=>`<div><div class="k">${a}</div><div class="v">${b}</div></div>`).join("")+
     (r.st?ST_ORDER.filter(x=>r.st[x]).map(x=>{const v=r.st[x];return `<div style="grid-column:1/-1"><div class="k">${esc(SETUPS[x].n)} · pivot ${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%)</div><div class="v" style="font:500 13.5px var(--f-body)">${esc(SETUPS[x].d(v))}</div></div>`}).join(""):"");
@@ -532,6 +542,8 @@ function openDetail(t){
     const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
     if(pk){const v=r.st[pk];ser.push({d:c.map((_,i)=>i>=c.length-Math.max(v.bd,5)?v.p:null),c:col("--accent"),w:1,dash:true})}
     chart($("cPrice"),ser,col,false);
+    volChart($("cVol"),c,r.v,col);
+    $("dVolNow").textContent=r.volx!=null?`Latest: ${r.volx.toFixed(1)}× its 50-day average`:"";
     const f=r.rs.find(v=>v!=null);chart($("cRS"),[{d:r.rs.map(v=>v==null?null:v/f*100),c:col("--accent"),w:1.8,fill:true}],col,true);
   });
   $("dClose").focus();
@@ -551,6 +563,20 @@ function chart(cv,series,col,ref100){
     if(s.fill&&first!=null){g.lineTo(x(last),H-B);g.lineTo(x(first),H-B);g.closePath();g.globalAlpha=.1;g.fillStyle=s.c;g.fill();g.globalAlpha=1}
     if(last!=null){g.fillStyle=s.c;g.beginPath();g.arc(x(last),y(s.d[last]),3,0,7);g.fill()}});
 }
+function volChart(cv,c,v,col){
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+  if(!v||!v.length)return;
+  const L=46,R=8,T=4,B=4,n=v.length,mx=Math.max(...v)||1;
+  const x=i=>L+(i/(n-1))*(W-L-R),y=val=>T+(1-val/mx)*(H-T-B),bw=Math.max(1,(W-L-R)/n*0.7);
+  g.font="11px "+col("--f-mono");g.fillStyle=col("--muted");g.textAlign="right";
+  g.fillText(fmtVol(mx*1000),L-6,T+9);
+  for(let i=0;i<n;i++){if(!v[i])continue;g.fillStyle=i&&c[i]!=null&&c[i-1]!=null&&c[i]<c[i-1]?col("--down"):col("--up");g.globalAlpha=.55;g.fillRect(x(i)-bw/2,y(v[i]),bw,H-B-y(v[i]))}
+  g.globalAlpha=1;g.strokeStyle=col("--ink");g.lineWidth=1.2;g.beginPath();let st=false;
+  for(let i=50;i<n;i++){let s=0;for(let j=i-49;j<=i;j++)s+=v[j];const a=s/50;if(!st){g.moveTo(x(i),y(a));st=true}else g.lineTo(x(i),y(a))}
+  g.stroke();
+}
+function fmtVol(x){return x>=1e9?(x/1e9).toFixed(1)+"B":x>=1e6?(x/1e6).toFixed(0)+"M":x>=1e3?(x/1e3).toFixed(0)+"K":String(x)}
 function nice(r){const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return (f<1.5?1:f<3?2:f<7?5:10)*p}
 function fmtN(v){return Math.abs(v)>=1000?Math.round(v).toLocaleString("en-GB"):v>=100?v.toFixed(0):v.toFixed(Math.abs(v)<10?2:1)}
 

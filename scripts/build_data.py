@@ -36,7 +36,11 @@ for t in members:
     s=ser[t]
     if sum(v is not None for v in s)<60: print('short',t); 
     n,sec,ind=meta.get(t,(t,'Unknown','Unknown'))
-    rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s)}
+    rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s),'v':[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[t]]}  # volume in thousands
+    last=max((i for i,x in enumerate(s) if x is not None),default=-1)
+    if 0<=last<len(dates)-1:
+        rec['ld']=str(dates[last].date())   # prices stop early: the page flags it
+        print('stale',t,rec['ld'])
     H=[x if x is not None else y for x,y in zip(hi[t],s)]; Lw=[x if x is not None else y for x,y in zip(lo[t],s)]
     st=scan(s,H,Lw,vo[t],out['dates']) if None not in s[-230:] else {}
     if st: rec['st']=st
