@@ -48,7 +48,8 @@ for t in stale:
     if any(ser[t][i] is None for i in range(src_last[t]+1,len(dates))):
         try:
             url=f"https://stooq.com/q/d/l/?s={t.lower()}.us&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
-            txt=urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'}),timeout=20).read().decode()
+            txt=urllib.request.urlopen(url,timeout=20).read().decode()
+            if not txt.startswith('Date'): print('gap fill (stooq) reply:',t,txt[:80].replace(chr(10),' '))
             for row in csv.DictReader(io.StringIO(txt)):
                 try: i=idx.get(_dt.datetime.strptime(row['Date'],'%Y-%m-%d'))
                 except (KeyError,ValueError): continue
@@ -77,9 +78,8 @@ for t in members:
     n,sec,ind=meta.get(t,(t,'Unknown','Unknown'))
     rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s),'v':[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[t]]}  # volume in thousands
     if src_last[t] is not None and any(x is None for x in s[src_last[t]+1:]):
-        last=max(i for i,x in enumerate(s) if x is not None and (i<=src_last[t] or all(y is not None for y in s[src_last[t]+1:i+1])))
-        rec['ld']=str(dates[last].date())   # prices still missing after this: the page flags it
-        print('stale',t,rec['ld'])
+        rec['md']=[str(dates[i].date()) for i in range(src_last[t]+1,len(dates)) if s[i] is None]   # sessions no source had
+        print('missing',t,rec['md'])
     if t in filled: rec['gf']=sorted(filled[t])
     H=[x if x is not None else y for x,y in zip(hi[t],s)]; Lw=[x if x is not None else y for x,y in zip(lo[t],s)]
     st=scan(s,H,Lw,vo[t],out['dates']) if None not in s[-230:] else {}

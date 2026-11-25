@@ -421,7 +421,8 @@ function renderTable(){
   document.querySelectorAll("th[data-k]").forEach(th=>{const k=th.dataset.k;if(k===sortK)th.setAttribute("aria-sort",sortDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
 }
 
-const stale=r=>r.ld?`<span class="stale" title="The data source has no prices for this stock after ${fmtDate(r.ld)}; the last price is carried forward, so its recent figures are approximate.">prices to ${fmtDate(r.ld)}</span>`:"";
+const shortD=d=>new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const stale=r=>r.md?`<span class="stale" title="No data source had prices for ${r.md.map(fmtDate).join(", ")}; the previous close is carried over those days, so recent figures are approximate.">missing ${r.md.map(shortD).join(" & ")} prices</span>`:"";
 function volCell(r){if(r.volx==null)return "–";const x=r.volx,c=x>=1.5?(r.day>=0?"pos":"neg"):"";return `<span class="${c}"${x>=1.5?' style="font-weight:600"':""}>${x.toFixed(1)}×</span>`}
 function spark(a,t){
   const v=a.filter(x=>x!=null);if(v.length<2)return "–";
@@ -578,7 +579,7 @@ $("viewDaily").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.tar
 function openDetail(t){
   const r=C.rows.find(x=>x.t===t);if(!r)return;
   $("dTitle").textContent=`${r.t} · ${r.n}`;
-  $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}${r.ld?` (data source has no prices after ${fmtDate(r.ld)})`:""}${r.gf?` · ${r.gf.length} recent session${r.gf.length>1?"s":""} filled from Yahoo Finance where the main data source had a gap`:""}`;
+  $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}${r.md?` (no prices available for ${r.md.map(fmtDate).join(", ")})`:""}${r.gf?` · ${r.gf.length} recent session${r.gf.length>1?"s":""} filled from Yahoo Finance where the main data source had a gap`:""}`;
   const k=[["RS rating",r.rating??"–"],["vs index 3M",pct(r.rel63)],["vs index 6M",pct(r.rel126)],["vs index 12M",pct(r.rel252)],["From 52w high",pct(r.off)],["RS line 52w high",r.nh?"Yes":"No"],["21-day EMA",r.e21?.toFixed(2)??"–"],["50-day avg",r.s50?.toFixed(2)??"–"],["200-day avg",r.s200?.toFixed(2)??"–"]];
   $("dKv").innerHTML=k.map(([a,b])=>`<div><div class="k">${a}</div><div class="v">${b}</div></div>`).join("")+
     (r.st?ST_ORDER.filter(x=>r.st[x]).map(x=>{const v=r.st[x];return `<div style="grid-column:1/-1"><div class="k">${esc(SETUPS[x].n)} · pivot ${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%)</div><div class="v" style="font:500 13.5px var(--f-body)">${esc(SETUPS[x].d(v))}</div></div>`}).join(""):"");
