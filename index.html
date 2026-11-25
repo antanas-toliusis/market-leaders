@@ -98,6 +98,21 @@ th.tk{position:sticky;left:0;z-index:2}
 .empty{padding:28px 14px;color:var(--muted);text-align:center}
 .more{display:flex;justify-content:center;padding:12px}
 .btn{all:unset;cursor:pointer;font:500 13px var(--f-body);padding:7px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--accent)}
+/* view tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs a{padding:9px 14px;font:600 14px var(--f-display);color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:.01em}
+.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.view{display:flex;flex-direction:column;gap:16px}
+.view[hidden]{display:none}
+.days{display:flex;flex-wrap:wrap;gap:6px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.mini{width:100%;min-width:0;border-collapse:collapse}
+.mini td{padding:6px 12px}
+.mini td.tk{min-width:0;max-width:none;position:static}
+.mini tr:last-child td{border-bottom:0}
+.note{padding:10px 14px;font-size:12.5px;color:var(--muted)}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}}
 /* detail sheet */
 .scrim{position:fixed;inset:0;background:rgba(5,10,20,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
 .scrim.open{display:flex}
@@ -147,6 +162,12 @@ canvas{width:100%;display:block}
     </div>
   </header>
 
+  <nav class="tabs" aria-label="Views">
+    <a href="#leaders" id="tabLeaders" aria-current="page">Leaders</a>
+    <a href="#daily" id="tabDaily">Daily update</a>
+  </nav>
+
+  <div class="view" id="viewLeaders">
   <section class="strip" aria-label="Summary">
     <div class="stat"><div class="k">Leaders beating the index</div><div class="v" id="sLeaders">–</div><div class="n" id="sLeadersN"></div></div>
     <div class="stat"><div class="k" id="sIdxK">Index return</div><div class="v" id="sIdx">–</div><div class="n" id="sIdxN"></div></div>
@@ -191,6 +212,28 @@ canvas{width:100%;display:block}
     <div class="empty" id="empty" hidden>No stocks match these filters. Turn one off or clear the search.</div>
     <div class="more" id="more" hidden><button type="button" class="btn" id="moreBtn">Show all</button></div>
   </section>
+  </div>
+
+  <div class="view" id="viewDaily" hidden>
+    <section class="panel">
+      <div class="ph"><h2 id="dyTitle">Daily update</h2><div class="days" id="dyDays" role="group" aria-label="Trading day"></div></div>
+      <div class="note" id="dyNote"></div>
+    </section>
+    <section class="strip" aria-label="Day summary">
+      <div class="stat"><div class="k">Index on the day</div><div class="v" id="dyIdx">–</div><div class="n" id="dyIdxN"></div></div>
+      <div class="stat"><div class="k">Leaders beating the index</div><div class="v" id="dyLead">–</div><div class="n" id="dyLeadN"></div></div>
+      <div class="stat"><div class="k">Joined / left the list</div><div class="v" id="dyInOut">–</div><div class="n">vs the previous close</div></div>
+      <div class="stat"><div class="k">New RS line highs</div><div class="v" id="dyNH">–</div><div class="n">RS line hit a 52-week high today</div></div>
+    </section>
+    <div class="grid2">
+      <section class="panel"><div class="ph"><h2>New leaders</h2><span class="hint">Now beating the index</span></div><div id="dyIn"></div></section>
+      <section class="panel"><div class="ph"><h2>Dropped out</h2><span class="hint">No longer beating the index</span></div><div id="dyOut"></div></section>
+      <section class="panel"><div class="ph"><h2>Biggest RS rating gains</h2><span class="hint">Among leaders</span></div><div id="dyUp"></div></section>
+      <section class="panel"><div class="ph"><h2>Biggest RS rating drops</h2><span class="hint">Among leaders</span></div><div id="dyDn"></div></section>
+      <section class="panel"><div class="ph"><h2>RS line at a new high</h2><span class="hint">Fresh 52-week high today</span></div><div id="dyNHL"></div></section>
+      <section class="panel"><div class="ph"><h2>Top movers among leaders</h2><span class="hint">Price change on the day</span></div><div id="dyMov"></div></section>
+    </div>
+  </div>
 
   <p class="foot">
     <b>How it works.</b> Every number is calculated from daily split- and dividend-adjusted closes.
@@ -231,15 +274,17 @@ function seg(c,from,to){const L=c.length-1;const a=c[L-from],b=c[L-to];return a&
 function wscore(c){const q=[seg(c,63,0),seg(c,126,63),seg(c,189,126),seg(c,252,189)];if(q.some(v=>v==null))return null;return .4*q[0]+.2*q[1]+.2*q[2]+.2*q[3]}
 function sma(c,n,end){end=end??c.length-1;if(end-n+1<0)return null;let s=0;for(let i=end-n+1;i<=end;i++){if(c[i]==null)return null;s+=c[i]}return s/n}
 
-function compute(){
-  const b=D.bench[bench];
+function compute(k=0){
+  const n=D.dates.length-k;
+  const b=D.bench[bench].slice(0,n);
   const bw=wscore(b);
-  const scores=D.stocks.map(s=>wscore(s.c));
+  const STK=k?D.stocks.map(s=>({...s,c:s.c.slice(0,n)})):D.stocks;
+  const scores=STK.map(s=>wscore(s.c));
   const valid=scores.filter(v=>v!=null).sort((x,y)=>x-y);
   const rankOf=v=>{if(v==null)return null;let lo=0,hi=valid.length;while(lo<hi){const m=(lo+hi)>>1;if(valid[m]<v)lo=m+1;else hi=m}return Math.max(1,Math.min(99,Math.round(lo/(valid.length-1)*98)+1))};
   const benchRating=rankOf(bw);
   const br={21:ret(b,21),63:ret(b,63),126:ret(b,126),252:ret(b,252)};
-  const rows=D.stocks.map((s,i)=>{
+  const rows=STK.map((s,i)=>{
     const c=s.c,L=c.length-1;
     const r={};[21,63,126,252].forEach(n=>{const x=ret(c,n);r["rel"+n]=x==null||br[n]==null?null:(1+x)/(1+br[n])-1;r["r"+n]=x});
     const rs=c.map((v,j)=>v&&b[j]?v/b[j]:null);
@@ -255,9 +300,11 @@ function compute(){
     const w=scores[i];
     let beats;
     if(lb==="w")beats=w!=null&&bw!=null&&w>bw;else beats=r["rel"+lb]!=null&&r["rel"+lb]>0;
-    return {...s,...r,w,rating:rankOf(w),rs,nh,off,s50,s200,trendScore,rsTrend,beats,price:c[L]};
+    const day=c[L]&&c[L-1]?c[L]/c[L-1]-1:null;
+    return {...s,...r,w,rating:rankOf(w),rs,nh,off,s50,s200,trendScore,rsTrend,beats,price:c[L],day};
   });
-  return {rows,bw,benchRating,br};
+  const bday=b[b.length-1]/b[b.length-2]-1;
+  return {rows,bw,benchRating,br,bday};
 }
 
 let C=null;
@@ -278,6 +325,7 @@ function render(){
   $("sSec").textContent=list[0]?.k??"–";$("sSecN").textContent=list[0]?`${list[0].l} of ${list[0].n} stocks beating the index`:"";
   $("sectors").innerHTML=list.map(x=>`<div class="sbar${sector===x.k?" on":""}" tabindex="0" role="button" aria-pressed="${sector===x.k}" data-s="${esc(x.k)}"><span class="nm">${esc(x.k)}</span><span class="track"><i style="width:${(x.p*100).toFixed(1)}%"></i></span><span class="ct">${x.l}/${x.n}</span></div>`).join("");
   renderTable();
+  dyCache={};if(view==="daily")renderDaily();
 }
 
 function renderTable(){
@@ -318,6 +366,60 @@ function spark(a,t){
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="vertical-align:middle" aria-label="RS line ${pct(t)} over 6 months"><path d="${d}L${e[0]} ${h} L2 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.5"/><circle cx="${e[0]}" cy="${e[1]}" r="2.4" fill="${col}"/></svg>`;
 }
 function fmtDate(s){const d=new Date(s+"T12:00:00Z");return d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}
+
+// daily update
+let view="leaders",dyK=0,dyCache={};
+function snap(k){return dyCache[k]??=(k===0?C:compute(k))}
+function miniTable(list,cols,emptyMsg){
+  if(!list.length)return `<div class="empty">${emptyMsg}</div>`;
+  return `<table class="mini"><tbody>${list.map(r=>`<tr tabindex="0" data-t="${esc(r.t)}"><td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span></td>${cols.map(f=>`<td>${f(r)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+const ratingCell=r=>`<span class="rs"><em>${r.rating??"–"}</em><span class="track"><i style="width:${r.rating??0}%"></i></span></span>`;
+const dayCell=r=>`<span class="${cls(r.day)}">${pct(r.day)}</span>`;
+function renderDaily(){
+  const N=D.dates.length,days=Math.min(10,N-260);
+  $("dyDays").innerHTML=Array.from({length:Math.max(days,1)},(_,k)=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===dyK}">${new Date(D.dates[N-1-k]+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</button>`).join("");
+  const T=snap(dyK),P=snap(dyK+1);
+  const prev=new Map(P.rows.map(r=>[r.t,r]));
+  const date=D.dates[N-1-dyK],pdate=D.dates[N-2-dyK];
+  const nm={SPY:"S&P 500",RSP:"S&P 500 equal-weight",QQQ:"Nasdaq-100"}[bench];
+  $("dyTitle").textContent=`Daily update, ${fmtDate(date)}`;
+  $("dyNote").textContent=`Close of ${fmtDate(date)} compared with ${fmtDate(pdate)}. Leaders are stocks beating the ${nm} on ${LB[lb]}; change the index or lookback at the top and this page follows.`;
+  const lead=T.rows.filter(r=>r.beats),plead=P.rows.filter(r=>r.beats);
+  const joined=lead.filter(r=>!prev.get(r.t)?.beats).sort((a,b)=>(b.rating??0)-(a.rating??0));
+  const left=T.rows.filter(r=>!r.beats&&prev.get(r.t)?.beats).sort((a,b)=>(b.rating??0)-(a.rating??0));
+  lead.forEach(r=>{const p=prev.get(r.t);r.dR=p&&p.rating!=null&&r.rating!=null?r.rating-p.rating:null});
+  const ups=lead.filter(r=>r.dR>0).sort((a,b)=>b.dR-a.dR).slice(0,10);
+  const dns=lead.filter(r=>r.dR<0).sort((a,b)=>a.dR-b.dR).slice(0,10);
+  const fresh=lead.filter(r=>r.nh&&!prev.get(r.t)?.nh).sort((a,b)=>(b.rating??0)-(a.rating??0));
+  const mov=[...lead].filter(r=>r.day!=null).sort((a,b)=>b.day-a.day).slice(0,10);
+  $("dyIdx").innerHTML=`<span class="${cls(T.bday)}">${pct(T.bday,2)}</span>`;$("dyIdxN").textContent=nm;
+  const dl=lead.length-plead.length;
+  $("dyLead").textContent=lead.length;$("dyLeadN").textContent=`${dl>0?"+":""}${dl} vs previous close (${plead.length})`;
+  $("dyInOut").innerHTML=`<span class="pos">+${joined.length}</span> / <span class="neg">−${left.length}</span>`;
+  $("dyNH").textContent=fresh.length;
+  const dR=r=>`<span class="${cls(r.dR)}">${r.dR>0?"+":""}${r.dR}</span>`;
+  const was=r=>{const p=prev.get(r.t);return `<span class="sec">was ${p?.rating??"–"}</span>`};
+  $("dyIn").innerHTML=miniTable(joined.slice(0,15),[ratingCell,was,dayCell],"No new leaders today.");
+  $("dyOut").innerHTML=miniTable(left.slice(0,15),[ratingCell,was,dayCell],"Nothing dropped out today.");
+  $("dyUp").innerHTML=miniTable(ups,[ratingCell,dR,dayCell],"No rating gains today.");
+  $("dyDn").innerHTML=miniTable(dns,[ratingCell,dR,dayCell],"No rating drops today.");
+  $("dyNHL").innerHTML=miniTable(fresh.slice(0,15),[ratingCell,r=>`<span class="sec">${esc(r.s)}</span>`,dayCell],"No fresh RS line highs today.");
+  $("dyMov").innerHTML=miniTable(mov,[ratingCell,r=>`<span class="sec">${esc(r.s)}</span>`,dayCell],"No data for this day.");
+  if(joined.length>15)$("dyIn").insertAdjacentHTML("beforeend",`<div class="note">and ${joined.length-15} more</div>`);
+  if(left.length>15)$("dyOut").insertAdjacentHTML("beforeend",`<div class="note">and ${left.length-15} more</div>`);
+}
+function route(){
+  view=location.hash==="#daily"?"daily":"leaders";
+  $("viewLeaders").hidden=view!=="leaders";$("viewDaily").hidden=view!=="daily";
+  $("tabLeaders").toggleAttribute("aria-current",view==="leaders");$("tabDaily").toggleAttribute("aria-current",view==="daily");
+  if(view==="leaders")$("tabLeaders").setAttribute("aria-current","page");else $("tabDaily").setAttribute("aria-current","page");
+  if(view==="daily"&&C)renderDaily();
+}
+window.addEventListener("hashchange",route);
+$("dyDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;dyK=+b.dataset.k;renderDaily()});
+$("viewDaily").addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});
+$("viewDaily").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}});
 
 // detail
 function openDetail(t){
@@ -370,7 +472,7 @@ $("dClose").addEventListener("click",closeDetail);
 $("scrim").addEventListener("click",e=>{if(e.target===$("scrim"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
 
-fetch("data.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{D=j;render()}).catch(err=>{$("asof").textContent="Couldn't load the price data ("+err.message+"). Reload the page to try again."});
+fetch("data.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{D=j;render();route()}).catch(err=>{$("asof").textContent="Couldn't load the price data ("+err.message+"). Reload the page to try again."});
 })();
 </script>
 </body>
