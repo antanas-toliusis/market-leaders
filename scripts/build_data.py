@@ -1,6 +1,7 @@
 import duckdb, csv, json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from setups import scan
+from breakouts import replay
 c=duckdb.connect()
 members=[r[0] for r in c.sql("""select ticker from 'data/membership_intervals.parquet' where "end" is null""").fetchall()]
 meta={}
@@ -31,7 +32,7 @@ def rnd(a):
         o.append(None if v is None else float(f"{v:.5g}"))
     return o
 for b in bench: out['bench'][b]=rnd(ser[b])
-counts={}
+counts={};events=[];episodes={}
 for t in members:
     s=ser[t]
     if sum(v is not None for v in s)<60: print('short',t); 
@@ -44,7 +45,24 @@ for t in members:
     H=[x if x is not None else y for x,y in zip(hi[t],s)]; Lw=[x if x is not None else y for x,y in zip(lo[t],s)]
     st=scan(s,H,Lw,vo[t],out['dates']) if None not in s[-230:] else {}
     if st: rec['st']=st
+    if None not in s[-290:]:
+        ep,ev=replay(s,H,Lw,vo[t],out['dates'],days=60)
+        for k,x in ep.items(): episodes[k]=episodes.get(k,0)+x
+        for e in ev: e['t']=t; events.append(e)
     for k in st: counts[k]=counts.get(k,0)+1
     out['stocks'].append(rec)
+# breakouts from setups: add the S&P 500's move since each breakout for context
+spy=out['bench']['SPY']
+for e in events:
+    e['sp']=round((spy[-1]/spy[e.pop('bi')]-1)*100,1)
+seen={}
+for e in sorted(events,key=lambda e:e['fs']):   # one breakout per stock, setup and day
+    seen.setdefault((e['t'],e['k'],e['bd']),e)
+events=list(seen.values())
+events.sort(key=lambda e:(e['bd'],e['t']),reverse=True)
+out['bo']=events
+out['ep']=episodes          # setup episodes started in the replay window
+out['bow']=out['dates'][-60]  # first day of the replay window
+print('episodes',episodes,'breakouts',len(events))
 json.dump(out,open('data.json','w'),separators=(',',':'))
 print('setups',counts);print(len(out['stocks']),os.path.getsize('data.json'),out['asOf'],out['dates'][0])
