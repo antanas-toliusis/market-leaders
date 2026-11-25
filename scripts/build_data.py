@@ -20,31 +20,44 @@ for t,d,p,h_,l_,cl,v in rows:
         i=idx[d]; ser[t][i]=p
         f=p/cl if cl else 1.0          # put high/low on the adjusted scale
         hi[t][i]=(h_ or cl)*f; lo[t][i]=(l_ or cl)*f; vo[t][i]=v or 0
-# Gap filling: if a member's prices stop before the latest session (e.g. the source
-# lagging after a stock split), fetch only the missing sessions from Yahoo Finance.
-# Never overrides source data; if the fetch fails the page flags the stock instead.
+# Gap filling. If a member's source prices stop before the latest session (e.g. the
+# source lagging after a stock split), fetch only the missing sessions: first from
+# Yahoo Finance, then from Stooq for anything Yahoo also lacks. Source rows are never
+# overridden, and any session still missing is flagged on the page.
+import io, urllib.request, datetime as _dt
+src_last={t:max((i for i,v in enumerate(ser[t]) if v is not None),default=None) for t in members}
+stale=[t for t in members if src_last[t] is not None and src_last[t]<len(dates)-1]
 filled={}
-stale=[t for t in members if ser[t][-1] is None and any(v is not None for v in ser[t])]
-if stale:
+def _put(t,i,cl,hh,ll,vv,ratio):
+    ser[t][i]=cl*ratio; hi[t][i]=hh*ratio; lo[t][i]=ll*ratio; vo[t][i]=int(vv or 0)
+    filled.setdefault(t,[]).append(str(dates[i].date()))
+for t in stale:
+    r=c.sql(f"select adj_close/close from 'data/prices.parquet' where ticker='{t}' and close>0 order by date desc limit 1").fetchall()
+    r=r[0] if r else None
+    ratio=r[0] if r and r[0] else 1.0          # continue the source's adjusted scale
+    start,end=dates[src_last[t]+1].date(),dates[-1].date()
     try:
         import yfinance as yf
-        for t in stale:
-            last=max(i for i,v in enumerate(ser[t]) if v is not None)
-            start=dates[last+1].date(); end=(dates[-1]+__import__('datetime').timedelta(days=1)).date()
-            df=yf.download(t,start=str(start),end=str(end),auto_adjust=False,progress=False,actions=False,multi_level_index=False)
-            if df is None or df.empty: print('gap fill: no data for',t); continue
-            # continue the source's adjusted scale from its last row
-            src=c.sql(f"select adj_close/close from 'data/prices.parquet' where ticker='{t}' and close>0 order by date desc limit 1").fetchone()
-            ratio=src[0] if src and src[0] else 1.0
-            got=[]
-            for d_,row in df.iterrows():
-                i=idx.get(d_.to_pydatetime().replace(tzinfo=None))
-                if i is None or ser[t][i] is not None or not row['Close']==row['Close']: continue
-                ser[t][i]=float(row['Close'])*ratio; hi[t][i]=float(row['High'])*ratio; lo[t][i]=float(row['Low'])*ratio
-                vo[t][i]=int(row['Volume'] or 0); got.append(str(dates[i].date()))
-            if got: filled[t]=got; print('gap fill',t,got)
+        df=yf.download(t,start=str(start),end=str(end+_dt.timedelta(days=1)),auto_adjust=False,progress=False,actions=False,multi_level_index=False)
+        for d_,row in (df.iterrows() if df is not None else []):
+            i=idx.get(d_.to_pydatetime().replace(tzinfo=None))
+            if i is not None and ser[t][i] is None and row['Close']==row['Close']:
+                _put(t,i,float(row['Close']),float(row['High']),float(row['Low']),row['Volume'],ratio)
     except Exception as e:
-        print('gap fill failed:',type(e).__name__,e)
+        print('gap fill (yahoo) failed:',t,type(e).__name__,e)
+    if any(ser[t][i] is None for i in range(src_last[t]+1,len(dates))):
+        try:
+            url=f"https://stooq.com/q/d/l/?s={t.lower()}.us&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
+            txt=urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'}),timeout=20).read().decode()
+            for row in csv.DictReader(io.StringIO(txt)):
+                try: i=idx.get(_dt.datetime.strptime(row['Date'],'%Y-%m-%d'))
+                except (KeyError,ValueError): continue
+                if i is not None and ser[t][i] is None:
+                    _put(t,i,float(row['Close']),float(row['High']),float(row['Low']),float(row.get('Volume') or 0),ratio)
+        except Exception as e:
+            print('gap fill (stooq) failed:',t,type(e).__name__,e)
+    left=[str(dates[i].date()) for i in range(src_last[t]+1,len(dates)) if ser[t][i] is None]
+    print('gap fill',t,'filled',sorted(filled.get(t,[])),'still missing',left)
 miss=[t for t in members if t not in meta]
 print('missing meta',miss)
 out={'asOf':str(dates[-1].date()),'dates':[str(d.date()) for d in dates],'bench':{},'stocks':[]}
@@ -62,11 +75,12 @@ for t in members:
     s=ser[t]
     if sum(v is not None for v in s)<60: print('short',t); 
     n,sec,ind=meta.get(t,(t,'Unknown','Unknown'))
-    rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s),**({'gf':filled[t]} if t in filled else {}),'v':[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[t]]}  # volume in thousands
-    last=max((i for i,x in enumerate(s) if x is not None),default=-1)
-    if 0<=last<len(dates)-1:
-        rec['ld']=str(dates[last].date())   # prices stop early: the page flags it
+    rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s),'v':[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[t]]}  # volume in thousands
+    if src_last[t] is not None and any(x is None for x in s[src_last[t]+1:]):
+        last=max(i for i,x in enumerate(s) if x is not None and (i<=src_last[t] or all(y is not None for y in s[src_last[t]+1:i+1])))
+        rec['ld']=str(dates[last].date())   # prices still missing after this: the page flags it
         print('stale',t,rec['ld'])
+    if t in filled: rec['gf']=sorted(filled[t])
     H=[x if x is not None else y for x,y in zip(hi[t],s)]; Lw=[x if x is not None else y for x,y in zip(lo[t],s)]
     st=scan(s,H,Lw,vo[t],out['dates']) if None not in s[-230:] else {}
     if st: rec['st']=st
