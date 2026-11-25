@@ -346,8 +346,8 @@ canvas{width:100%;display:block}
       <button type="button" class="close" id="dClose">Close</button>
     </header>
     <div class="kv" id="dKv"></div>
-    <div class="chartbar"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><div class="seg" id="dRng" role="group" aria-label="How much history to show"><button type="button" data-v="1" aria-pressed="true">100%</button><button type="button" data-v="0.5" aria-pressed="false">50%</button><button type="button" data-v="0.25" aria-pressed="false">25%</button></div><div class="seg" id="dSty" role="group" aria-label="Price style"><button type="button" data-v="c" aria-pressed="true">Candles</button><button type="button" data-v="b" aria-pressed="false">Bars</button></div><span class="hint" id="dRngNote"></span><span class="hint" id="dTfNote"></span></div>
-    <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i><span id="dStyLeg">Price candles, up / down</span></span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
+    <div class="chartbar"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><div class="seg" id="dRng" role="group" aria-label="How much history to show"><button type="button" data-v="1" aria-pressed="true">100%</button><button type="button" data-v="0.5" aria-pressed="false">50%</button><button type="button" data-v="0.25" aria-pressed="false">25%</button></div><span class="hint" id="dRngNote"></span><span class="hint" id="dTfNote"></span></div>
+    <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i>Price bars (open left, close right), up / down</span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
     <canvas id="cPrice" height="330"></canvas>
     <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i><span id="dVolAvg">50-day average volume</span></span><span id="dVolNow"></span></div>
     <canvas id="cVol" height="110"></canvas>
@@ -784,18 +784,16 @@ function openDetail(t){
   requestAnimationFrame(()=>drawDetail(r));
   $("dClose").focus();
 }
-let detailRow=null,chartTf="d",W=null,Wp=null,chartSty="c";
+let detailRow=null,chartTf="d",W=null,Wp=null;
 let chartRange=1;
-try{if(localStorage.getItem("ml-chart-style")==="b")chartSty="b";const rg=+localStorage.getItem("ml-chart-range");if([1,0.5,0.25].includes(rg))chartRange=rg}catch(e){}
+try{localStorage.removeItem("ml-chart-style");const rg=+localStorage.getItem("ml-chart-range");if([1,0.5,0.25].includes(rg))chartRange=rg}catch(e){}
 let O=null,Op=null;
 function loadOhlc(){return Op??=fetch("ohlc.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>O=j).catch(e=>{Op=null;throw e})}
 function loadWeekly(){return Wp??=fetch("weekly.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>W=j).catch(e=>{Wp=null;throw e})}
 async function drawDetail(r){
   const css=getComputedStyle(document.documentElement);const col=n=>css.getPropertyValue(n).trim();
   $("dTf").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===chartTf));
-  $("dSty").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===chartSty));
   $("dRng").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.v===chartRange));
-  $("dStyLeg").textContent=chartSty==="b"?"Price bars (open left, close right), up / down":"Price candles, up / down";
   const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
   let c,v,dates,rs,ma1,ma2,volN,pivotSpan,nh=r.nh;
   if(chartTf==="w"){
@@ -812,21 +810,21 @@ async function drawDetail(r){
     $("dTfNote").textContent=`${c.length} weeks, each bar one week${W.partial?"; the last bar is the current week so far":""}.`;
     $("dMa1").textContent="10-week";$("dMa2").textContent="40-week";$("dVolAvg").textContent="10-week average volume";
   }else{
-    if(!O)$("dTfNote").textContent="Loading candles…";
-    let oh=null;try{oh=(await loadOhlc()).s[r.t]}catch(e){$("dTfNote").textContent="Couldn't load the daily open/high/low, so candles are drawn from closes only. Reload to try again."}
+    if(!O)$("dTfNote").textContent="Loading price bars…";
+    let oh=null;try{oh=(await loadOhlc()).s[r.t]}catch(e){$("dTfNote").textContent="Couldn't load the daily open/high/low, so bars are drawn from closes only. Reload to try again."}
     if(detailRow!==r||chartTf!=="d")return;
     c=r.c;v=r.v;dates=D.dates;rs=r.rs;ma1=c.map((_,i)=>sma(c,50,i));ma2=c.map((_,i)=>sma(c,200,i));volN=50;
-    // without an open, a candle runs from the previous close
+    // without an open, a bar opens at the previous close
     var cd={c,o:c.map((x,i)=>oh?.o[i]??(i?c[i-1]:x)),h:c.map((x,i)=>oh?.h[i]??null),l:c.map((x,i)=>oh?.l[i]??null)};
     pivotSpan=pk?Math.max(r.st[pk].bd,5):0;
     if(oh)$("dTfNote").textContent="";$("dMa1").textContent="50-day";$("dMa2").textContent="200-day";$("dVolAvg").textContent="50-day average volume";
   }
   const ser=[{d:ma1,c:col("--warn"),w:1.4},{d:ma2,c:col("--muted"),w:1.4}];
-  cd.up=col("--up");cd.down=col("--down");cd.bars=chartSty==="b";
+  cd.up=col("--up");cd.down=col("--down");
   if(pk)ser.push({d:c.map((_,i)=>i>=c.length-pivotSpan?r.st[pk].p:null),c:col("--accent"),w:1,dash:true});
   const s0=Math.max(0,Math.floor(c.length*(1-chartRange))),sl=a=>a.slice(s0);
   ser.forEach(s=>s.d=sl(s.d));
-  const cdv={c:sl(cd.c),o:sl(cd.o),h:sl(cd.h),l:sl(cd.l),up:cd.up,down:cd.down,bars:cd.bars},rsv=sl(rs),dv=sl(dates);
+  const cdv={c:sl(cd.c),o:sl(cd.o),h:sl(cd.h),l:sl(cd.l),up:cd.up,down:cd.down},rsv=sl(rs),dv=sl(dates);
   const nb=c.length-s0,unit=chartTf==="w"?"week":"session",span=chartTf==="w"?(nb>=104?(nb/52).toFixed(1)+" years":Math.round(nb/4.35)+" months"):(nb>=252?(nb/252).toFixed(1)+" years":Math.round(nb/21)+" months");
   $("dRngNote").textContent=`${nb} ${unit}s, about ${span}.`;
   const f=rsv.find(x=>x!=null);
@@ -840,7 +838,7 @@ async function drawDetail(r){
 }
 $("dTf").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartTf=b.dataset.v;drawDetail(detailRow)});
 $("dRng").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartRange=+b.dataset.v;try{localStorage.setItem("ml-chart-range",String(chartRange))}catch(err){}drawDetail(detailRow)});
-$("dSty").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartSty=b.dataset.v;try{localStorage.setItem("ml-chart-style",chartSty)}catch(err){}drawDetail(detailRow)});
+
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
 function chart(cv,series,col,ref100,rs,dates,cd){
   dates=dates||D.dates;
@@ -852,7 +850,7 @@ function chart(cv,series,col,ref100,rs,dates,cd){
   g.font="11px "+col("--f-mono");g.fillStyle=col("--muted");g.strokeStyle=col("--line");g.lineWidth=1;
   const step=nice((mx-mn)/4);for(let v=Math.ceil(mn/step)*step;v<=mx;v+=step){g.beginPath();g.moveTo(L,y(v));g.lineTo(W-R,y(v));g.stroke();g.textAlign="right";g.fillText(fmtN(v),L-6,y(v)+4)}
   if(ref100&&100>mn&&100<mx){g.setLineDash([4,4]);g.strokeStyle=col("--muted");g.beginPath();g.moveTo(L,y(100));g.lineTo(W-R,y(100));g.stroke();g.setLineDash([])}
-  g.textAlign="center";g.fillStyle=col("--muted");let lastM=-1;dates.forEach((d,i)=>{const m=+d.slice(5,7);if(m!==lastM&&i>0&&(m-1)%3===0){g.fillText(new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{month:"short",year:"2-digit"}),x(i),H-5)}lastM=m});
+  dateAxis(g,dates,x,col,T,H,B);
   if(rs){ // RS line on its own scale in the lower 40% of the plot, under the price lines
     const vals=rs.d.filter(v=>v!=null);if(vals.length>1){
       const rmn=Math.min(...vals),rmx=Math.max(...vals),top=T+(H-T-B)*0.58,bot=H-B-4;
@@ -865,15 +863,13 @@ function chart(cv,series,col,ref100,rs,dates,cd){
         g.font="600 11px "+col("--f-body");g.textAlign="right";g.fillText(rs.nh?"RS new high":"RS",x(last)-12,ry(rs.d[last])+4)}
     }
   }
-  if(cd){ // candles (wick low-high, body open-close) or OHLC bars (open tick left, close tick right); green up, red down
-    const slot=(W-L-R)/Math.max(1,n-1),bw=Math.max(1,Math.min(14,slot*0.7)),barW=Math.max(1.6,Math.min(3.5,slot*0.45));
+  if(cd){ // OHLC bars: high-low line, open tick left, close tick right; green up, red down
+    const slot=(W-L-R)/Math.max(1,n-1),barW=Math.max(1.6,Math.min(3.5,slot*0.45)),tk=Math.max(2,Math.min(8,slot*0.5));
     for(let i=0;i<n;i++){const c=cd.c[i];if(c==null)continue;
       const o=cd.o[i]??c,hi=cd.h[i]??Math.max(o,c),lo=cd.l[i]??Math.min(o,c),up=c>=o,xx=x(i);
-      g.strokeStyle=g.fillStyle=up?cd.up:cd.down;g.lineWidth=cd.bars?barW:1;
+      g.strokeStyle=up?cd.up:cd.down;g.lineWidth=barW;
       g.beginPath();g.moveTo(Math.round(xx)+.5,y(hi));g.lineTo(Math.round(xx)+.5,y(lo));g.stroke();
-      if(cd.bars){const tk=Math.max(2,slot*0.5),px=Math.round(xx)+.5;
-        g.beginPath();g.moveTo(px-tk,y(o));g.lineTo(px,y(o));g.moveTo(px,y(c));g.lineTo(px+tk,y(c));g.stroke();continue}
-      const top=y(Math.max(o,c)),bh=Math.max(1,Math.abs(y(o)-y(c)));g.fillRect(xx-bw/2,top,bw,bh);}
+      const px=Math.round(xx)+.5;g.beginPath();g.moveTo(px-tk,y(o));g.lineTo(px,y(o));g.moveTo(px,y(c));g.lineTo(px+tk,y(c));g.stroke();}
   }
   series.forEach(s=>{g.strokeStyle=s.c;g.lineWidth=s.w;g.setLineDash(s.dash?[5,4]:[]);g.beginPath();let st=false,first=null,last=null;s.d.forEach((v,i)=>{if(v==null){st=false;return}if(!st){g.moveTo(x(i),y(v));st=true;if(first==null)first=i}else g.lineTo(x(i),y(v));last=i});g.stroke();g.setLineDash([]);
     if(s.fill&&first!=null){g.lineTo(x(last),H-B);g.lineTo(x(first),H-B);g.closePath();g.globalAlpha=.1;g.fillStyle=s.c;g.fill();g.globalAlpha=1}
@@ -893,6 +889,17 @@ function volChart(cv,c,v,col,avgN=50,start=0){
   g.stroke();
 }
 function fmtVol(x){return x>=1e9?(x/1e9).toFixed(1)+"B":x>=1e6?(x/1e6).toFixed(0)+"M":x>=1e3?(x/1e3).toFixed(0)+"K":String(x)}
+// Date labels: the finest step (half-month, month, 2 months, quarter) that gives at most ~10 labels.
+function dateAxis(g,dates,x,col,T,H,B){
+  const key={half:d=>d.slice(0,7)+(+d.slice(8,10)>=15?"b":"a"),m1:d=>d.slice(0,7),m2:d=>d.slice(0,4)+Math.floor((+d.slice(5,7)-1)/2),q:d=>d.slice(0,4)+Math.floor((+d.slice(5,7)-1)/3)};
+  const ticks=k=>{const t=[];dates.forEach((d,i)=>{if(i>0&&key[k](d)!==key[k](dates[i-1]))t.push(i)});return t};
+  let step="q",pos=ticks("q");for(const k of ["half","m1","m2"]){const t=ticks(k);if(t.length<=10){step=k;pos=t;break}}
+  g.save();g.strokeStyle=col("--line");g.globalAlpha=.6;g.lineWidth=1;
+  for(const i of pos){const xx=Math.round(x(i))+.5;g.beginPath();g.moveTo(xx,T);g.lineTo(xx,H-B);g.stroke()}
+  g.restore();g.textAlign="center";g.fillStyle=col("--muted");
+  for(const i of pos){const dt=new Date(dates[i]+"T12:00:00Z"),mid=step==="half"&&+dates[i].slice(8,10)>=15;
+    g.fillText(mid?dt.toLocaleDateString("en-GB",{day:"numeric",month:"short"}):dt.toLocaleDateString("en-GB",{month:"short",year:"2-digit"}),x(i),H-5)}
+}
 function nice(r){const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return (f<1.5?1:f<3?2:f<7?5:10)*p}
 function fmtN(v){return Math.abs(v)>=1000?Math.round(v).toLocaleString("en-GB"):v>=100?v.toFixed(0):v.toFixed(Math.abs(v)<10?2:1)}
 
