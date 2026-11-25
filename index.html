@@ -567,11 +567,11 @@ function volChart(cv,c,v,col){
   const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   if(!v||!v.length)return;
-  const L=46,R=8,T=4,B=4,n=v.length,mx=Math.max(...v)||1;
+  const L=46,R=8,T=4,B=4,n=v.length,srt=v.filter(Boolean).sort((a,b)=>a-b),mx=Math.min(Math.max(...v),(srt[Math.floor(srt.length*.97)]||1)*1.3)||1;
   const x=i=>L+(i/(n-1))*(W-L-R),y=val=>T+(1-val/mx)*(H-T-B),bw=Math.max(1,(W-L-R)/n*0.7);
   g.font="11px "+col("--f-mono");g.fillStyle=col("--muted");g.textAlign="right";
   g.fillText(fmtVol(mx*1000),L-6,T+9);
-  for(let i=0;i<n;i++){if(!v[i])continue;g.fillStyle=i&&c[i]!=null&&c[i-1]!=null&&c[i]<c[i-1]?col("--down"):col("--up");g.globalAlpha=.55;g.fillRect(x(i)-bw/2,y(v[i]),bw,H-B-y(v[i]))}
+  for(let i=0;i<n;i++){if(!v[i])continue;g.fillStyle=i&&c[i]!=null&&c[i-1]!=null&&c[i]<c[i-1]?col("--down"):col("--up");g.globalAlpha=.55;const top=y(Math.min(v[i],mx));g.fillRect(x(i)-bw/2,top,bw,H-B-top)}
   g.globalAlpha=1;g.strokeStyle=col("--ink");g.lineWidth=1.2;g.beginPath();let st=false;
   for(let i=50;i<n;i++){let s=0;for(let j=i-49;j<=i;j++)s+=v[j];const a=s/50;if(!st){g.moveTo(x(i),y(a));st=true}else g.lineTo(x(i),y(a))}
   g.stroke();
