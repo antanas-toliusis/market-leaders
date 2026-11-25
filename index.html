@@ -12,7 +12,7 @@
 :root{
   --bg:#f3f5f8; --panel:#ffffff; --ink:#131a24; --muted:#5b6778; --line:#dde3ea;
   --accent:#1f5bd6; --accent-soft:#e3ecfd;
-  --up:#0f8a4a; --up-soft:#e2f4ea; --down:#c4362b; --down-soft:#fbe7e5; --warn:#a86a00;
+  --rs:#7a4bd6;--up:#0f8a4a; --up-soft:#e2f4ea; --down:#c4362b; --down-soft:#fbe7e5; --warn:#a86a00;
   --f-display:"IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -22,14 +22,14 @@
   :root:not([data-theme="light"]){
     --bg:#0d1117; --panel:#151b24; --ink:#e6ebf2; --muted:#8c98a9; --line:#263040;
     --accent:#6c9bff; --accent-soft:#1b2a47;
-    --up:#3ccf7f; --up-soft:#11291d; --down:#ff6b5e; --down-soft:#331715; --warn:#e2a93b;
+    --rs:#b498ff;--up:#3ccf7f; --up-soft:#11291d; --down:#ff6b5e; --down-soft:#331715; --warn:#e2a93b;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0d1117; --panel:#151b24; --ink:#e6ebf2; --muted:#8c98a9; --line:#263040;
   --accent:#6c9bff; --accent-soft:#1b2a47;
-  --up:#3ccf7f; --up-soft:#11291d; --down:#ff6b5e; --down-soft:#331715; --warn:#e2a93b;
+  --rs:#b498ff;--up:#3ccf7f; --up-soft:#11291d; --down:#ff6b5e; --down-soft:#331715; --warn:#e2a93b;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -316,12 +316,10 @@ canvas{width:100%;display:block}
       <button type="button" class="close" id="dClose">Close</button>
     </header>
     <div class="kv" id="dKv"></div>
-    <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span></div>
-    <canvas id="cPrice" height="220"></canvas>
+    <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
+    <canvas id="cPrice" height="300"></canvas>
     <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i>50-day average volume</span><span id="dVolNow"></span></div>
     <canvas id="cVol" height="80"></canvas>
-    <div class="legend"><span><i style="background:var(--accent)"></i>RS line (stock ÷ index), rebased to 100</span></div>
-    <canvas id="cRS" height="150"></canvas>
   </div>
 </div>
 
@@ -598,15 +596,16 @@ function openDetail(t){
     const ser=[{d:c,c:col("--ink"),w:1.6},{d:m50,c:col("--warn"),w:1.2},{d:m200,c:col("--muted"),w:1.2}];
     const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
     if(pk){const v=r.st[pk];ser.push({d:c.map((_,i)=>i>=c.length-Math.max(v.bd,5)?v.p:null),c:col("--accent"),w:1,dash:true})}
-    chart($("cPrice"),ser,col,false);
+    const f=r.rs.find(v=>v!=null);
+    chart($("cPrice"),ser,col,false,{d:r.rs.map(v=>v==null?null:v/f*100),c:col("--rs"),nh:r.nh});
+    {const z=r.rs[r.rs.length-1];$("dRsNow").textContent=z&&f?`RS line ${z/f*100>=100?"+":""}${(z/f*100-100).toFixed(0)}% vs index over the chart${r.nh?", at a 52-week high":""}`:""}
     volChart($("cVol"),c,r.v,col);
     $("dVolNow").textContent=r.volx!=null?`Latest: ${r.volx.toFixed(1)}× its 50-day average`:"";
-    const f=r.rs.find(v=>v!=null);chart($("cRS"),[{d:r.rs.map(v=>v==null?null:v/f*100),c:col("--accent"),w:1.8,fill:true}],col,true);
   });
   $("dClose").focus();
 }
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
-function chart(cv,series,col,ref100){
+function chart(cv,series,col,ref100,rs){
   const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   const all=series.flatMap(s=>s.d).filter(v=>v!=null);let mn=Math.min(...all),mx=Math.max(...all);const pad=(mx-mn)*.06||1;mn-=pad;mx+=pad;
@@ -616,6 +615,18 @@ function chart(cv,series,col,ref100){
   const step=nice((mx-mn)/4);for(let v=Math.ceil(mn/step)*step;v<=mx;v+=step){g.beginPath();g.moveTo(L,y(v));g.lineTo(W-R,y(v));g.stroke();g.textAlign="right";g.fillText(fmtN(v),L-6,y(v)+4)}
   if(ref100&&100>mn&&100<mx){g.setLineDash([4,4]);g.strokeStyle=col("--muted");g.beginPath();g.moveTo(L,y(100));g.lineTo(W-R,y(100));g.stroke();g.setLineDash([])}
   g.textAlign="center";g.fillStyle=col("--muted");let lastM=-1;D.dates.forEach((d,i)=>{const m=+d.slice(5,7);if(m!==lastM&&i>0&&(m-1)%3===0){g.fillText(new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{month:"short",year:"2-digit"}),x(i),H-5)}lastM=m});
+  if(rs){ // RS line on its own scale in the lower 40% of the plot, under the price lines
+    const vals=rs.d.filter(v=>v!=null);if(vals.length>1){
+      const rmn=Math.min(...vals),rmx=Math.max(...vals),top=T+(H-T-B)*0.58,bot=H-B-4;
+      const ry=v=>bot-(v-rmn)/((rmx-rmn)||1)*(bot-top);
+      g.strokeStyle=rs.c;g.lineWidth=1.5;g.beginPath();let st=false,last=null;
+      rs.d.forEach((v,i)=>{if(v==null){st=false;return}if(!st){g.moveTo(x(i),ry(v));st=true}else g.lineTo(x(i),ry(v));last=i});g.stroke();
+      if(last!=null){g.lineTo(x(last),bot);g.lineTo(x(rs.d.findIndex(v=>v!=null)),bot);g.closePath();g.globalAlpha=.08;g.fillStyle=rs.c;g.fill();g.globalAlpha=1;
+        g.fillStyle=rs.c;g.beginPath();g.arc(x(last),ry(rs.d[last]),rs.nh?4.5:3,0,7);g.fill();
+        if(rs.nh){g.strokeStyle=rs.c;g.lineWidth=1.5;g.beginPath();g.arc(x(last),ry(rs.d[last]),8,0,7);g.stroke()}
+        g.font="600 11px "+col("--f-body");g.textAlign="right";g.fillText(rs.nh?"RS new high":"RS",x(last)-12,ry(rs.d[last])+4)}
+    }
+  }
   series.forEach(s=>{g.strokeStyle=s.c;g.lineWidth=s.w;g.setLineDash(s.dash?[5,4]:[]);g.beginPath();let st=false,first=null,last=null;s.d.forEach((v,i)=>{if(v==null){st=false;return}if(!st){g.moveTo(x(i),y(v));st=true;if(first==null)first=i}else g.lineTo(x(i),y(v));last=i});g.stroke();g.setLineDash([]);
     if(s.fill&&first!=null){g.lineTo(x(last),H-B);g.lineTo(x(first),H-B);g.closePath();g.globalAlpha=.1;g.fillStyle=s.c;g.fill();g.globalAlpha=1}
     if(last!=null){g.fillStyle=s.c;g.beginPath();g.arc(x(last),y(s.d[last]),3,0,7);g.fill()}});
