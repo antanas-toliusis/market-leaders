@@ -20,6 +20,31 @@ for t,d,p,h_,l_,cl,v in rows:
         i=idx[d]; ser[t][i]=p
         f=p/cl if cl else 1.0          # put high/low on the adjusted scale
         hi[t][i]=(h_ or cl)*f; lo[t][i]=(l_ or cl)*f; vo[t][i]=v or 0
+# Gap filling: if a member's prices stop before the latest session (e.g. the source
+# lagging after a stock split), fetch only the missing sessions from Yahoo Finance.
+# Never overrides source data; if the fetch fails the page flags the stock instead.
+filled={}
+stale=[t for t in members if ser[t][-1] is None and any(v is not None for v in ser[t])]
+if stale:
+    try:
+        import yfinance as yf
+        for t in stale:
+            last=max(i for i,v in enumerate(ser[t]) if v is not None)
+            start=dates[last+1].date(); end=(dates[-1]+__import__('datetime').timedelta(days=1)).date()
+            df=yf.download(t,start=str(start),end=str(end),auto_adjust=False,progress=False,actions=False,multi_level_index=False)
+            if df is None or df.empty: print('gap fill: no data for',t); continue
+            # continue the source's adjusted scale from its last row
+            src=c.sql(f"select adj_close/close from 'data/prices.parquet' where ticker='{t}' and close>0 order by date desc limit 1").fetchone()
+            ratio=src[0] if src and src[0] else 1.0
+            got=[]
+            for d_,row in df.iterrows():
+                i=idx.get(d_.to_pydatetime().replace(tzinfo=None))
+                if i is None or ser[t][i] is not None or not row['Close']==row['Close']: continue
+                ser[t][i]=float(row['Close'])*ratio; hi[t][i]=float(row['High'])*ratio; lo[t][i]=float(row['Low'])*ratio
+                vo[t][i]=int(row['Volume'] or 0); got.append(str(dates[i].date()))
+            if got: filled[t]=got; print('gap fill',t,got)
+    except Exception as e:
+        print('gap fill failed:',type(e).__name__,e)
 miss=[t for t in members if t not in meta]
 print('missing meta',miss)
 out={'asOf':str(dates[-1].date()),'dates':[str(d.date()) for d in dates],'bench':{},'stocks':[]}
@@ -37,7 +62,7 @@ for t in members:
     s=ser[t]
     if sum(v is not None for v in s)<60: print('short',t); 
     n,sec,ind=meta.get(t,(t,'Unknown','Unknown'))
-    rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s),'v':[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[t]]}  # volume in thousands
+    rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s),**({'gf':filled[t]} if t in filled else {}),'v':[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[t]]}  # volume in thousands
     last=max((i for i,x in enumerate(s) if x is not None),default=-1)
     if 0<=last<len(dates)-1:
         rec['ld']=str(dates[last].date())   # prices stop early: the page flags it
