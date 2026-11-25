@@ -572,7 +572,7 @@ $("dClose").addEventListener("click",closeDetail);
 $("scrim").addEventListener("click",e=>{if(e.target===$("scrim"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
 
-fetch("data.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{D=j;render();route()}).catch(err=>{$("asof").textContent="Couldn't load the price data ("+err.message+"). Reload the page to try again."});
+fetch("data.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{D=j;render();route()}).catch(err=>{$("asof").textContent="Couldn't load the price data ("+err.message+"). Reload the page to try again."});
 })();
 </script>
 </body>
