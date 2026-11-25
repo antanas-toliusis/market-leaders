@@ -791,8 +791,16 @@ let detailRow=null,chartTf="d",W=null,Wp=null;
 let chartRange=1;
 try{localStorage.removeItem("ml-chart-style");const rg=+localStorage.getItem("ml-chart-range");if([1,0.5,0.25].includes(rg))chartRange=rg}catch(e){}
 let O=null,Op=null;
-function loadOhlc(){return Op??=fetch("ohlc.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>O=j).catch(e=>{Op=null;throw e})}
-function loadWeekly(){return Wp??=fetch("weekly.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>W=j).catch(e=>{Wp=null;throw e})}
+// Fetch a data file, retrying a few times: GitHub Pages briefly answers 503 while it redeploys.
+async function getJSON(url,tries=4){
+  for(let k=1;;k++){
+    try{const x=await fetch(url,{cache:"no-cache"});if(x.ok)return await x.json();if(x.status<500&&x.status!==429)throw new Error(x.status);if(k>=tries)throw new Error(x.status)}
+    catch(e){if(k>=tries||/^4\d\d$/.test(e.message))throw e}
+    await new Promise(r=>setTimeout(r,800*k));
+  }
+}
+function loadOhlc(){return Op??=getJSON("ohlc.json").then(j=>O=j).catch(e=>{Op=null;throw e})}
+function loadWeekly(){return Wp??=getJSON("weekly.json").then(j=>W=j).catch(e=>{Wp=null;throw e})}
 async function drawDetail(r){
   const css=getComputedStyle(document.documentElement);const col=n=>css.getPropertyValue(n).trim();
   $("dTf").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===chartTf));
@@ -938,7 +946,7 @@ $("dClose").addEventListener("click",closeDetail);
 $("scrim").addEventListener("click",e=>{if(e.target===$("scrim"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
 
-fetch("data.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{D=j;render();route()}).catch(err=>{$("asof").textContent="Couldn't load the price data ("+err.message+"). Reload the page to try again."});
+getJSON("data.json").then(j=>{D=j;render();route()}).catch(err=>{$("asof").textContent="Couldn't load the price data ("+err.message+"). Reload the page to try again."});
 })();
 </script>
 </body>
