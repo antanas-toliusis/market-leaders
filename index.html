@@ -855,13 +855,13 @@ async function drawDetail(r){
     if(detailRow!==r||chartTf!=="w")return;      // user moved on while loading
     const s=W.s[r.t],b=W.s.RSP.c;
     if(!s){$("dTfNote").textContent="No weekly data for this stock.";return}
-    c=s.c;v=s.v;dates=W.weeks;ma1=c.map((_,i)=>sma(c,10,i));ma2=c.map((_,i)=>sma(c,72,i));volN=10;
+    c=s.c;v=s.v;dates=W.weeks;ma1=c.map((_,i)=>sma(c,12,i));ma2=c.map((_,i)=>sma(c,72,i));volN=10;
     var cd={c,o:c.map((x,i)=>s.o?.[i]??(i?c[i-1]:x)),h:s.h,l:s.l};
     rs=c.map((x,i)=>x!=null&&b[i]?x/b[i]:null);
     const win=rs.slice(-52).filter(x=>x!=null);nh=win.length>1&&rs[rs.length-1]>=Math.max(...win)*0.995;
     pivotSpan=pk?Math.max(1,Math.ceil(r.st[pk].bd/5)):0;
     $("dTfNote").textContent=`Each bar is one week${W.partial?"; the last is the current week so far":""}.`;
-    $("dMa1").textContent="10-week";$("dMa2").textContent="72-week";$("dVolAvg").textContent="10-week average volume";
+    $("dMa1").textContent="12-week";$("dMa2").textContent="72-week";$("dVolAvg").textContent="10-week average volume";
   }else{
     if(!O)$("dTfNote").textContent="Loading price bars…";
     let oh=null;try{oh=(await loadOhlc()).s[r.t]}catch(e){$("dTfNote").textContent="Couldn't load the daily open/high/low, so bars are drawn from closes only. Reload to try again."}
