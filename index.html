@@ -577,7 +577,7 @@ const WSCANNERS=[
   {id:"bigvol",n:"Big-volume week",s:"An up week on the highest weekly volume of the last 10+ weeks: often institutions buying",
    test:x=>x.chg>0&&x.v>0&&x.v>=x.maxv10,d:x=>`${pct(x.chg,1)} week on the biggest volume in 11 weeks`},
   {id:"wpower",n:"Weekly power bar",s:"Up 10% or more on the week on above-average weekly volume",
-   test:x=>x.chg>=0.10&&x.rv>=1,d:x=>`${pct(x.chg,1)} week on ${x.rv.toFixed(1)}× 10-week volume`},
+   test:x=>x.chg>=0.10&&x.rv>=1,d:x=>`${pct(x.chg,1)} week on ${x.rv.toFixed(1)}× 12-week average volume`},
   {id:"w12",n:"Support at the 12-week line",s:"A leader dipping to a rising 12-week line and closing in the upper half of the week's range",
    test:x=>x.lead&&x.ma12&&x.ma12up&&x.l<=x.ma12*1.01&&x.px>=x.ma12&&x.pos>=0.5,d:x=>`low ${pct(x.l/x.ma12-1,1)} vs 12-week, closed ${Math.round(x.pos*100)}% up the range`},
   {id:"wor",n:"Weekly outside reversal",s:"Takes out the prior week's high and low, then closes lower in the bottom half: a warning",
@@ -591,7 +591,7 @@ function wscanRows(i){
   for(const s of D.stocks){const ws=W.s[s.t];if(!ws)continue;const c=ws.c,hh=ws.h,ll=ws.l,v=ws.v;
     if(c[i]==null||c[i-1]==null||!v[i]||hh[i]==null)continue;
     if(s.md&&s.md.some(d=>d>wk[i-1]&&d<=wk[i]))continue;    // week has carried-over prices
-    const r=byT.get(s.t)||{};let a=0,n=0,mxv=0;for(let q=i-10;q<i;q++)if(v[q]){a+=v[q];n++;if(v[q]>mxv)mxv=v[q]}
+    const r=byT.get(s.t)||{};let a=0,n=0,mxv=0;for(let q=i-12;q<i;q++)if(v[q]){a+=v[q];n++;if(q>=i-10&&v[q]>mxv)mxv=v[q]}
     const cl3=c.slice(i-2,i+1);
     rows.push({t:s.t,n:s.n,s:s.s,px:c[i],chg:c[i]/c[i-1]-1,v:v[i],vol:v[i]*1000,a10:n?a/n*1000:null,rv:n?v[i]/(a/n):null,maxv10:mxv,
       rating:r.rating,lead:r.beats?1:0,st:lastW?r.st:null,h:hh[i],l:ll[i],ph:hh[i-1],pl:ll[i-1],pc:c[i-1],
@@ -638,9 +638,9 @@ function renderScan(){
   document.querySelectorAll("#scHead th[data-k]").forEach(th=>{if(th.dataset.k===scSort)th.setAttribute("aria-sort",scDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
 }
 function setScHead(weekly){
-  const lab=weekly?{chg:"Chg % (week)",vol:"Vol (week)",a10:"Avg vol 10W"}:{chg:"Chg %",vol:"Vol",a10:"Avg vol 10D"};
+  const lab=weekly?{chg:"Chg % (week)",vol:"Vol (week)",a10:"Avg vol 12W"}:{chg:"Chg %",vol:"Vol",a10:"Avg vol 10D"};
   for(const [k,t] of Object.entries(lab)){const th=document.querySelector(`#scHead th[data-k="${k}"]`);if(th)th.textContent=t}
-  const rv=document.querySelector('#scHead th[data-k="rv"]');if(rv)rv.title=weekly?"Week's volume ÷ 10-week average":"Volume ÷ 10-day average volume";
+  const rv=document.querySelector('#scHead th[data-k="rv"]');if(rv)rv.title=weekly?"Week's volume ÷ 12-week average":"Volume ÷ 10-day average volume";
 }
 async function renderWScan(){
   setScHead(true);
@@ -855,13 +855,13 @@ async function drawDetail(r){
     if(detailRow!==r||chartTf!=="w")return;      // user moved on while loading
     const s=W.s[r.t],b=W.s.RSP.c;
     if(!s){$("dTfNote").textContent="No weekly data for this stock.";return}
-    c=s.c;v=s.v;dates=W.weeks;ma1=c.map((_,i)=>sma(c,12,i));ma2=c.map((_,i)=>sma(c,72,i));volN=10;
+    c=s.c;v=s.v;dates=W.weeks;ma1=c.map((_,i)=>sma(c,12,i));ma2=c.map((_,i)=>sma(c,72,i));volN=12;
     var cd={c,o:c.map((x,i)=>s.o?.[i]??(i?c[i-1]:x)),h:s.h,l:s.l};
     rs=c.map((x,i)=>x!=null&&b[i]?x/b[i]:null);
     const win=rs.slice(-52).filter(x=>x!=null);nh=win.length>1&&rs[rs.length-1]>=Math.max(...win)*0.995;
     pivotSpan=pk?Math.max(1,Math.ceil(r.st[pk].bd/5)):0;
     $("dTfNote").textContent=`Each bar is one week${W.partial?"; the last is the current week so far":""}.`;
-    $("dMa1").textContent="12-week";$("dMa2").textContent="72-week";$("dVolAvg").textContent="10-week average volume";
+    $("dMa1").textContent="12-week";$("dMa2").textContent="72-week";$("dVolAvg").textContent="12-week average volume";
   }else{
     if(!O)$("dTfNote").textContent="Loading price bars…";
     let oh=null;try{oh=(await loadOhlc()).s[r.t]}catch(e){$("dTfNote").textContent="Couldn't load the daily open/high/low, so bars are drawn from closes only. Reload to try again."}
