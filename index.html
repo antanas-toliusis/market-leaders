@@ -102,6 +102,22 @@ th.tk{position:sticky;left:0;z-index:2}
 .nearma{display:inline-flex;align-items:center;gap:4px}
 .nearma select{font:12.5px var(--f-body);padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.scards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;padding:12px 14px}
+.scard{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.scard:hover{border-color:var(--accent)}
+.scard[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.scard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scard .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.scard b{font:600 15px var(--f-display)}
+.scard .num{font:600 20px var(--f-mono)}
+.scard .num.zero{color:var(--muted)}
+.scard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.pill.st{background:var(--warn);color:#fff}
+.pill.st.pp{background:var(--accent)}
+.det{font:12.5px var(--f-body);color:var(--muted);white-space:normal;min-width:220px}
+.rules{padding:4px 14px 14px;font-size:12.5px;color:var(--muted);line-height:1.55;max-width:900px}
+.rules dt{font-weight:600;color:var(--ink);margin-top:8px}
+.rules dd{margin:2px 0 0}
 /* view tabs */
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
 .tabs a{padding:9px 14px;font:600 14px var(--f-display);color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:.01em}
@@ -168,6 +184,7 @@ canvas{width:100%;display:block}
 
   <nav class="tabs" aria-label="Views">
     <a href="#leaders" id="tabLeaders" aria-current="page">Leaders</a>
+    <a href="#strategies" id="tabStrat">Strategies</a>
     <a href="#daily" id="tabDaily">Daily update</a>
   </nav>
 
@@ -192,7 +209,7 @@ canvas{width:100%;display:block}
         <button type="button" class="chip" data-f="nh" aria-pressed="false">RS line at 52w high</button>
         <button type="button" class="chip" data-f="trend" aria-pressed="false">Uptrend (P &gt; 50d &gt; 200d)</button>
         <button type="button" class="chip" data-f="near" aria-pressed="false">Within 15% of 52w high</button>
-        <button type="button" class="chip" data-f="vcp" aria-pressed="false" title="Volatility contraction pattern: shrinking pullbacks, drying volume, price near the pivot">VCP</button>
+        <button type="button" class="chip" data-f="setup" aria-pressed="false" title="VCP, cup with handle, flat base, high tight flag, 3-weeks-tight or a recent pocket pivot. See the Strategies tab.">Any chart setup</button>
         <span class="nearma"><button type="button" class="chip" data-f="nearma" aria-pressed="false" title="Price at or just above the 21-day EMA, 50-day and 200-day averages">Near MAs</button><label for="maTol" class="sr">Maximum distance above each moving average</label><select id="maTol"><option value="0.02">≤2%</option><option value="0.03" selected>≤3%</option><option value="0.05">≤5%</option><option value="0.08">≤8%</option></select></span>
       </div>
       <input type="search" id="q" placeholder="Search ticker or name" aria-label="Search ticker or company name">
@@ -218,6 +235,26 @@ canvas{width:100%;display:block}
     <div class="empty" id="empty" hidden>No stocks match these filters. Turn one off or clear the search.</div>
     <div class="more" id="more" hidden><button type="button" class="btn" id="moreBtn">Show all</button></div>
   </section>
+  </div>
+
+  <div class="view" id="viewStrat" hidden>
+    <section class="panel">
+      <div class="ph"><h2>Chart setups</h2>
+        <div class="filters"><button type="button" class="chip" id="stLeadOnly" aria-pressed="true">Leaders only</button><button type="button" class="chip" id="stRS80" aria-pressed="false">RS rating 80+</button></div></div>
+      <div class="note" id="stNote"></div>
+      <div class="scards" id="stCards"></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2 id="stListTitle">Matches</h2><span class="hint">Sorted by RS rating. Tap a stock for its chart and pivot.</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="l tk">Stock</th><th class="l">Sector</th><th>RS rating</th><th class="l">Setups</th><th>Pivot</th><th>Close vs pivot</th><th class="l">Pattern detail</th><th class="l">Trend</th></tr></thead>
+        <tbody id="stTb"></tbody></table></div>
+      <div class="empty" id="stEmpty" hidden>No stocks show this setup right now.</div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>How each setup is detected</h2><span class="hint">Scanned every night from daily highs, lows, closes and volume</span></div>
+      <dl class="rules" id="stRules"></dl>
+    </section>
   </div>
 
   <div class="view" id="viewDaily" hidden>
@@ -247,7 +284,7 @@ canvas{width:100%;display:block}
     <b>RS 12M weighted</b> follows the IBD convention: 40% weight on the latest quarter and 20% on each of the three before it.
     <b>RS rating</b> is that weighted score's percentile among all S&amp;P 500 members (1–99); the index's own rating is shown in the summary, and only stocks above it are listed.
     The <b>RS line</b> is stock price ÷ index price; a rising line means the stock is outperforming.
-    <b>VCP</b> (volatility contraction pattern) is detected nightly from daily highs, lows and volume: a stock in an uptrend (price above its 50, 150 and 200-day averages, 200-day rising, within 25% of its 52-week high) whose base of 5 weeks to 6 months shows at least two pullbacks, each clearly shallower than the last (first 10–40%, final 12% or less), with 10-day volume below 85% of the 50-day average and price between 8% under and 3% over the pivot high. It is a rules-based approximation, so check the chart.
+    <b>Chart setups</b> (VCP, cup with handle, flat base, high tight flag, 3-weeks-tight, pocket pivot) are scanned nightly; the Strategies tab lists them with the exact rules.
     <b>Near MAs</b> keeps stocks closing at or just above all three of the 21-day EMA, 50-day and 200-day averages, by no more than the % you pick.
     Data: point-in-time S&amp;P 500 dataset (github.com/Johnbrick123/sp500-data, built from Yahoo Finance and cross-checked against Nasdaq), sector labels from the GICS list. This is a screen, not investment advice.
   </p>
@@ -260,7 +297,7 @@ canvas{width:100%;display:block}
       <button type="button" class="close" id="dClose">Close</button>
     </header>
     <div class="kv" id="dKv"></div>
-    <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i>VCP pivot, across the base</span></div>
+    <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span></div>
     <canvas id="cPrice" height="220"></canvas>
     <div class="legend"><span><i style="background:var(--accent)"></i>RS line (stock ÷ index), rebased to 100</span></div>
     <canvas id="cRS" height="150"></canvas>
@@ -270,7 +307,7 @@ canvas{width:100%;display:block}
 <script>
 (function(){
 let D=null, bench="SPY", lb="w", sortK="rating", sortDir=-1, sector=null, showAll=false;
-const F={rs80:false,nh:false,trend:false,near:false,nearma:false,vcp:false};
+const F={rs80:false,nh:false,trend:false,near:false,nearma:false,setup:false};
 const $=id=>document.getElementById(id);
 const pct=(v,d=1)=>v==null||!isFinite(v)?"–":(v>0?"+":"")+(v*100).toFixed(d)+"%";
 const cls=v=>v==null?"":v>=0?"pos":"neg";
@@ -336,12 +373,12 @@ function render(){
   $("sSec").textContent=list[0]?.k??"–";$("sSecN").textContent=list[0]?`${list[0].l} of ${list[0].n} stocks beating the index`:"";
   $("sectors").innerHTML=list.map(x=>`<div class="sbar${sector===x.k?" on":""}" tabindex="0" role="button" aria-pressed="${sector===x.k}" data-s="${esc(x.k)}"><span class="nm">${esc(x.k)}</span><span class="track"><i style="width:${(x.p*100).toFixed(1)}%"></i></span><span class="ct">${x.l}/${x.n}</span></div>`).join("");
   renderTable();
-  dyCache={};if(view==="daily")renderDaily();
+  dyCache={};if(view==="daily")renderDaily();if(view==="strategies")renderStrat();
 }
 
 function renderTable(){
   const q=$("q").value.trim().toLowerCase();
-  let rows=C.rows.filter(r=>r.beats&&(!sector||r.s===sector)&&(!F.rs80||(r.rating??0)>=80)&&(!F.nh||r.nh)&&(!F.trend||r.trendScore===3)&&(!F.near||(r.off!=null&&r.off>=-0.15))&&(!F.vcp||r.vcp)&&(!F.nearma||(r.maMin!=null&&r.maMin>=0&&r.maGap<=+$("maTol").value))&&(!q||r.t.toLowerCase().includes(q)||r.n.toLowerCase().includes(q)));
+  let rows=C.rows.filter(r=>r.beats&&(!sector||r.s===sector)&&(!F.rs80||(r.rating??0)>=80)&&(!F.nh||r.nh)&&(!F.trend||r.trendScore===3)&&(!F.near||(r.off!=null&&r.off>=-0.15))&&(!F.setup||r.st)&&(!F.nearma||(r.maMin!=null&&r.maMin>=0&&r.maGap<=+$("maTol").value))&&(!q||r.t.toLowerCase().includes(q)||r.n.toLowerCase().includes(q)));
   const key=sortK==="rating"?(lb==="w"?"w":"rel"+lb):sortK;
   rows.sort((a,b)=>{let x=a[key],y=b[key];if(x==null)return 1;if(y==null)return -1;return typeof x==="string"?sortDir*x.localeCompare(y):sortDir*(x-y)});
   // rank by primary metric
@@ -352,7 +389,7 @@ function renderTable(){
   $("more").hidden=rows.length<=lim;$("moreBtn").textContent=`Show all ${rows.length}`;
   $("tb").innerHTML=rows.slice(0,lim).map(r=>{
     const tr=r.trendScore===3?'<span class="pill up">Uptrend</span>':r.trendScore===2?'<span class="pill mid">Mixed</span>':'<span class="pill dn">Weak</span>';
-    const nh=(r.nh?' <span class="pill hi" title="RS line at a 52-week high">NH</span>':"")+(r.vcp?` <span class="pill vcp" title="VCP: ${r.vcp.d.map(x=>x+'%').join(' → ')}, pivot ${r.vcp.p}">VCP</span>`:"");
+    const nh=(r.nh?' <span class="pill hi" title="RS line at a 52-week high">NH</span>':"")+badges(r);
     return `<tr tabindex="0" data-t="${esc(r.t)}">
       <td class="l rank">${rk.get(r.t)}</td>
       <td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span></td>
@@ -377,6 +414,52 @@ function spark(a,t){
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="vertical-align:middle" aria-label="RS line ${pct(t)} over 6 months"><path d="${d}L${e[0]} ${h} L2 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.5"/><circle cx="${e[0]}" cy="${e[1]}" r="2.4" fill="${col}"/></svg>`;
 }
 function fmtDate(s){const d=new Date(s+"T12:00:00Z");return d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}
+
+// chart setups
+const SETUPS={
+  vcp:{n:"VCP",b:"VCP",s:"Volatility contraction: each pullback in the base shallower than the last, volume drying up",
+    rule:"Stage 2 uptrend (above 50, 150 and 200-day, 200-day rising, within 25% of the 52-week high). A base of 5 weeks to 6 months with at least two major pullbacks, each at most 85% of the one before, the first 10–40% deep and the last 12% or less. 10-day volume under 85% of the 50-day. Close between 8% under and 3% over the pivot (the high before the last pullback).",
+    d:v=>`${v.d.map(x=>Math.round(x)+"%").join(" → ")} pullbacks over ${Math.round(v.bd/5)} wks, volume ${v.vr}× 50d`},
+  cwh:{n:"Cup with handle",b:"Cup",s:"U-shaped cup 12–35% deep, then a short handle in the upper half on lighter volume",
+    rule:"Price above a rising 200-day. A 25%+ advance into the left lip, a cup 12–35% deep lasting at least 6 weeks with its low in the middle and at least a week spent in the bottom third (a U, not a V), the right side back within 10% of the left lip. Then a handle of 1–5 weeks, 3–15% deep, staying in the upper half of the cup, on below-average volume. Pivot: the top of the handle. Close between 8% under and 5% over it.",
+    d:v=>`cup ${v.cd}% over ${v.cw} wks, handle ${v.hd}% over ${v.hw} wks, handle volume ${v.vr}×`},
+  flat:{n:"Flat base",b:"Flat",s:"5+ weeks moving sideways in a range no deeper than 15%, after a 20%+ advance",
+    rule:"Price above a rising 200-day. The longest stretch ending today whose high-to-low range stays within 15%, at least 5 weeks long, coming after a 20%+ rise in the three months before it. Pivot: the top of the range. Close within 5% of it.",
+    d:v=>`${v.dp}% deep over ${v.w} wks`},
+  htf:{n:"High tight flag",b:"HTF",s:"Price roughly doubles in 4–8 weeks, then pulls back no more than 25%",
+    rule:"A 90%+ gain within about 3–8 weeks (the pole), then a flag of 2–5 weeks that pulls back 5–25% and holds within 15% of the peak. Pivot: the peak. Rare among large caps.",
+    d:v=>`+${v.g}% pole, flag ${v.fd}% over ${v.fw} wks`},
+  twt:{n:"3-weeks-tight",b:"3WT",s:"Three weekly closes within 1.5% of each other: institutions holding",
+    rule:"Price above a rising 200-day and up 20%+ over the three months before. The last three completed weekly closes sit within 1.5% of each other. Pivot: the highest price of those three weeks. Close within 5% of it.",
+    d:v=>`weekly closes within ${v.tr}%`},
+  pp:{n:"Pocket pivot",b:"PP",s:"An up day on volume above every down day of the prior 10 sessions",
+    rule:"In the last 5 sessions: an up day whose volume beats the biggest down-day volume of the 10 sessions before it, closing in the upper half of its range, above the 50-day and no more than 5% above the 10-day average. It is an early buy signal inside a base, so the pivot shown is that day's high.",
+    d:v=>`${v.ago?v.ago+" day"+(v.ago>1?"s":"")+" ago":"today"} (${fmtDate(v.dt)}), volume ${v.vx}× the largest down day`}
+};
+const ST_ORDER=["vcp","cwh","flat","htf","twt","pp"];
+const badges=r=>r.st?ST_ORDER.filter(k=>r.st[k]).map(k=>` <span class="pill st ${k}" title="${esc(SETUPS[k].n)}">${SETUPS[k].b}</span>`).join(""):"";
+let stSel="all",stLead=true,stRS=false;
+function renderStrat(){
+  const pool=C.rows.filter(r=>r.st&&(!stLead||r.beats)&&(!stRS||(r.rating??0)>=80));
+  const cnt=k=>pool.filter(r=>k==="all"||r.st[k]).length;
+  $("stNote").textContent=`Prices to the close of ${fmtDate(D.asOf)}. ${stLead?"Showing only stocks whose relative strength beats the index you picked at the top.":"Showing all S&P 500 stocks, leaders or not."} These are rules-based scans: check the chart before acting on any of them.`;
+  $("stCards").innerHTML=[["all",{n:"All setups",s:"Any of the patterns below"}],...ST_ORDER.map(k=>[k,SETUPS[k]])].map(([k,s])=>{const c=cnt(k);return `<button type="button" class="scard" data-k="${k}" aria-pressed="${stSel===k}"><span class="top"><b>${esc(s.n)}</b><span class="num${c?"":" zero"}">${c}</span></span><p>${esc(s.s)}</p></button>`}).join("");
+  const list=pool.filter(r=>stSel==="all"||r.st[stSel]).sort((a,b)=>(b.rating??0)-(a.rating??0));
+  $("stListTitle").textContent=`${stSel==="all"?"All setups":SETUPS[stSel].n}: ${list.length} stock${list.length===1?"":"s"}`;
+  $("stEmpty").hidden=list.length>0;
+  $("stTb").innerHTML=list.map(r=>{
+    const k=stSel==="all"?ST_ORDER.find(x=>r.st[x]):stSel,v=r.st[k];
+    const tr=r.trendScore===3?'<span class="pill up">Uptrend</span>':r.trendScore===2?'<span class="pill mid">Mixed</span>':'<span class="pill dn">Weak</span>';
+    return `<tr tabindex="0" data-t="${esc(r.t)}"><td class="tk"><b>${esc(r.t)}</b><span>${esc(r.n)}</span></td><td class="l sec">${esc(r.s)}</td>
+      <td>${ratingCell(r)}</td><td class="l">${badges(r)}</td><td>${v.p.toFixed(2)}</td><td class="${cls(v.pd)}">${v.pd>0?"+":""}${v.pd}%</td>
+      <td class="l det">${stSel==="all"?`<b>${esc(SETUPS[k].n)}:</b> `:""}${esc(SETUPS[k].d(v))}</td><td class="l">${tr}</td></tr>`}).join("");
+  $("stRules").innerHTML=ST_ORDER.map(k=>`<dt>${esc(SETUPS[k].n)}</dt><dd>${esc(SETUPS[k].rule)}</dd>`).join("");
+}
+$("stCards").addEventListener("click",e=>{const b=e.target.closest(".scard");if(!b)return;stSel=b.dataset.k;renderStrat()});
+$("stLeadOnly").addEventListener("click",e=>{stLead=!stLead;e.currentTarget.setAttribute("aria-pressed",stLead);renderStrat()});
+$("stRS80").addEventListener("click",e=>{stRS=!stRS;e.currentTarget.setAttribute("aria-pressed",stRS);renderStrat()});
+$("viewStrat").addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});
+$("viewStrat").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}});
 
 // daily update
 let view="leaders",dyK=0,dyCache={};
@@ -421,11 +504,11 @@ function renderDaily(){
   if(left.length>15)$("dyOut").insertAdjacentHTML("beforeend",`<div class="note">and ${left.length-15} more</div>`);
 }
 function route(){
-  view=location.hash==="#daily"?"daily":"leaders";
-  $("viewLeaders").hidden=view!=="leaders";$("viewDaily").hidden=view!=="daily";
-  $("tabLeaders").toggleAttribute("aria-current",view==="leaders");$("tabDaily").toggleAttribute("aria-current",view==="daily");
-  if(view==="leaders")$("tabLeaders").setAttribute("aria-current","page");else $("tabDaily").setAttribute("aria-current","page");
+  view={"#daily":"daily","#strategies":"strategies"}[location.hash]||"leaders";
+  const V={leaders:["viewLeaders","tabLeaders"],strategies:["viewStrat","tabStrat"],daily:["viewDaily","tabDaily"]};
+  for(const [k,[v,t]] of Object.entries(V)){$(v).hidden=k!==view;if(k===view)$(t).setAttribute("aria-current","page");else $(t).removeAttribute("aria-current")}
   if(view==="daily"&&C)renderDaily();
+  if(view==="strategies"&&C)renderStrat();
 }
 window.addEventListener("hashchange",route);
 $("dyDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;dyK=+b.dataset.k;renderDaily()});
@@ -438,15 +521,16 @@ function openDetail(t){
   $("dTitle").textContent=`${r.t} · ${r.n}`;
   $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}`;
   const k=[["RS rating",r.rating??"–"],["vs index 3M",pct(r.rel63)],["vs index 6M",pct(r.rel126)],["vs index 12M",pct(r.rel252)],["From 52w high",pct(r.off)],["RS line 52w high",r.nh?"Yes":"No"],["21-day EMA",r.e21?.toFixed(2)??"–"],["50-day avg",r.s50?.toFixed(2)??"–"],["200-day avg",r.s200?.toFixed(2)??"–"]];
-  if(r.vcp){const v=r.vcp;k.push(["VCP contractions",v.d.map(x=>Math.round(x)+"%").join(" → ")],["VCP pivot",`${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%)`],["Volume 10d / 50d",v.vr.toFixed(2)+"×"])}
-  $("dKv").innerHTML=k.map(([a,b])=>`<div><div class="k">${a}</div><div class="v">${b}</div></div>`).join("");
-  $("dVcpLeg").hidden=!r.vcp;
+  $("dKv").innerHTML=k.map(([a,b])=>`<div><div class="k">${a}</div><div class="v">${b}</div></div>`).join("")+
+    (r.st?ST_ORDER.filter(x=>r.st[x]).map(x=>{const v=r.st[x];return `<div style="grid-column:1/-1"><div class="k">${esc(SETUPS[x].n)} · pivot ${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%)</div><div class="v" style="font:500 13.5px var(--f-body)">${esc(SETUPS[x].d(v))}</div></div>`}).join(""):"");
+  {const pk=r.st&&ST_ORDER.find(x=>r.st[x]);$("dVcpLeg").hidden=!pk;if(pk)$("dVcpTxt").textContent=`${SETUPS[pk].n} pivot, across the pattern`}
   $("scrim").classList.add("open");document.body.style.overflow="hidden";
   requestAnimationFrame(()=>{
     const c=r.c;const m50=c.map((_,i)=>sma(c,50,i)),m200=c.map((_,i)=>sma(c,200,i));
     const css=getComputedStyle(document.documentElement);const col=n=>css.getPropertyValue(n).trim();
     const ser=[{d:c,c:col("--ink"),w:1.6},{d:m50,c:col("--warn"),w:1.2},{d:m200,c:col("--muted"),w:1.2}];
-    if(r.vcp)ser.push({d:c.map((_,i)=>i>=c.length-r.vcp.bd?r.vcp.p:null),c:col("--accent"),w:1,dash:true});
+    const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
+    if(pk){const v=r.st[pk];ser.push({d:c.map((_,i)=>i>=c.length-Math.max(v.bd,5)?v.p:null),c:col("--accent"),w:1,dash:true})}
     chart($("cPrice"),ser,col,false);
     const f=r.rs.find(v=>v!=null);chart($("cRS"),[{d:r.rs.map(v=>v==null?null:v/f*100),c:col("--accent"),w:1.8,fill:true}],col,true);
   });

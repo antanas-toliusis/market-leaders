@@ -1,6 +1,6 @@
 import duckdb, csv, json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
-from vcp import detect
+from setups import scan
 c=duckdb.connect()
 members=[r[0] for r in c.sql("""select ticker from 'data/membership_intervals.parquet' where "end" is null""").fetchall()]
 meta={}
@@ -31,16 +31,16 @@ def rnd(a):
         o.append(None if v is None else float(f"{v:.5g}"))
     return o
 for b in bench: out['bench'][b]=rnd(ser[b])
+counts={}
 for t in members:
     s=ser[t]
     if sum(v is not None for v in s)<60: print('short',t); 
     n,sec,ind=meta.get(t,(t,'Unknown','Unknown'))
     rec={'t':t,'n':n,'s':sec,'i':ind,'c':rnd(s)}
-    try:
-        v=detect(s,[x if x is not None else y for x,y in zip(hi[t],s)],[x if x is not None else y for x,y in zip(lo[t],s)],vo[t])
-    except Exception as e:
-        print('vcp error',t,e); v=None
-    if v: rec['vcp']=v; nv=globals().get('nv',0)+1; globals()['nv']=nv
+    H=[x if x is not None else y for x,y in zip(hi[t],s)]; Lw=[x if x is not None else y for x,y in zip(lo[t],s)]
+    st=scan(s,H,Lw,vo[t],out['dates']) if None not in s[-230:] else {}
+    if st: rec['st']=st
+    for k in st: counts[k]=counts.get(k,0)+1
     out['stocks'].append(rec)
 json.dump(out,open('data.json','w'),separators=(',',':'))
-print('vcp',globals().get('nv',0));print(len(out['stocks']),os.path.getsize('data.json'),out['asOf'],out['dates'][0])
+print('setups',counts);print(len(out['stocks']),os.path.getsize('data.json'),out['asOf'],out['dates'][0])
