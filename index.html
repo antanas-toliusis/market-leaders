@@ -135,6 +135,7 @@ th.tk{position:sticky;left:0;z-index:2}
 .note{padding:10px 14px;font-size:12.5px;color:var(--muted)}
 @media (max-width:720px){.grid2{grid-template-columns:1fr}}
 .grid2>*{min-width:0}
+@media (max-width:720px){th[data-k="s"],td.sec{display:none}}
 .grid2 .panel>div[id]{overflow-x:auto}
 /* detail sheet */
 .chartbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -255,7 +256,7 @@ canvas{width:100%;display:block}
     <section class="panel">
       <div class="ph"><h2 id="stListTitle">Matches</h2><span class="hint">Sorted by RS rating. Tap a stock for its chart and pivot.</span></div>
       <div class="tblwrap"><table>
-        <thead><tr><th class="l tk">Stock</th><th class="l">Sector</th><th>RS rating</th><th class="l">Setups</th><th>Pivot</th><th>Close vs pivot</th><th class="l">Pattern detail</th><th>Vol vs 50d</th><th class="l">Trend</th></tr></thead>
+        <thead><tr><th class="l tk">Stock</th><th class="l" data-k="s">Sector</th><th>RS rating</th><th class="l">Setups</th><th>Pivot</th><th>Close vs pivot</th><th class="l">Pattern detail</th><th>Vol vs 50d</th><th class="l">Trend</th></tr></thead>
         <tbody id="stTb"></tbody></table></div>
       <div class="empty" id="stEmpty" hidden>No stocks show this setup right now.</div>
     </section>
