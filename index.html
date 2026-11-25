@@ -210,7 +210,7 @@ canvas{width:100%;display:block}
         <button type="button" class="chip" data-f="nh" aria-pressed="false">RS line at 52w high</button>
         <button type="button" class="chip" data-f="trend" aria-pressed="false">Uptrend (P &gt; 50d &gt; 200d)</button>
         <button type="button" class="chip" data-f="near" aria-pressed="false">Within 15% of 52w high</button>
-        <button type="button" class="chip" data-f="setup" aria-pressed="false" title="VCP, cup with handle, flat base, high tight flag, 3-weeks-tight or a recent pocket pivot. See the Strategies tab.">Any chart setup</button>
+        <button type="button" class="chip" data-f="setup" aria-pressed="false" title="VCP, cup with handle (incl. handle at the 50-day), flat base, high tight flag, 3-weeks-tight or a recent pocket pivot. See the Strategies tab.">Any chart setup</button>
         <span class="nearma"><button type="button" class="chip" data-f="nearma" aria-pressed="false" title="Price at or just above the 21-day EMA, 50-day and 200-day averages">Near MAs</button><label for="maTol" class="sr">Maximum distance above each moving average</label><select id="maTol"><option value="0.02">≤2%</option><option value="0.03" selected>≤3%</option><option value="0.05">≤5%</option><option value="0.08">≤8%</option></select></span>
       </div>
       <input type="search" id="q" placeholder="Search ticker or name" aria-label="Search ticker or company name">
@@ -287,7 +287,7 @@ canvas{width:100%;display:block}
     <b>RS rating</b> is that weighted score's percentile among all S&amp;P 500 members (1–99); the index's own rating is shown in the summary, and only stocks above it are listed.
     The <b>RS line</b> is stock price ÷ index price; a rising line means the stock is outperforming.
     <b>Vol vs 50d</b> is the latest day's volume divided by the average of the 50 days before it; 1.5× or more is bold, green on up days and red on down days.
-    <b>Chart setups</b> (VCP, cup with handle, flat base, high tight flag, 3-weeks-tight, pocket pivot) are scanned nightly; the Strategies tab lists them with the exact rules.
+    <b>Chart setups</b> (VCP, cup with handle, cup with handle at the 50-day, flat base, high tight flag, 3-weeks-tight, pocket pivot) are scanned nightly; the Strategies tab lists them with the exact rules.
     <b>Near MAs</b> keeps stocks closing at or just above all three of the 21-day EMA, 50-day and 200-day averages, by no more than the % you pick.
     Data: point-in-time S&amp;P 500 dataset (github.com/Johnbrick123/sp500-data, built from Yahoo Finance and cross-checked against Nasdaq), sector labels from the GICS list. This is a screen, not investment advice.
   </p>
@@ -433,6 +433,9 @@ const SETUPS={
   cwh:{n:"Cup with handle",b:"Cup",s:"U-shaped cup 12–35% deep, then a short handle in the upper half on lighter volume",
     rule:"Price above a rising 200-day. A 25%+ advance into the left lip, a cup 12–35% deep lasting at least 6 weeks with its low in the middle and at least a week spent in the bottom third (a U, not a V), the right side back within 10% of the left lip. Then a handle of 1–5 weeks, 3–15% deep, staying in the upper half of the cup, on below-average volume. Pivot: the top of the handle. Close between 8% under and 5% over it.",
     d:v=>`cup ${v.cd}% over ${v.cw} wks, handle ${v.hd}% over ${v.hw} wks, handle volume ${v.vr}×`},
+  cwm:{n:"Cup, handle at 50-day",b:"Cup@50",s:"A cup whose handle has pulled back to a rising 50-day and is holding it",
+    rule:"Same cup as above (25%+ advance in, 12–35% deep, a U not a V, right side back within 90–115% of the left lip). The handle runs 1–10 weeks, is 3–18% deep and stays in the upper half of the cup. The close sits within 3% either side of the 50-day average, the 50-day is higher than 20 sessions ago, and no close in the last 10 sessions fell more than 3% below it. The close is 2–18% under the pivot (the right lip), so this finds support entries before the breakout.",
+    d:v=>`cup ${v.cd}% over ${v.cw} wks, handle ${v.hd}% over ${v.hw} wks, ${v.md>0?"+":""}${v.md}% vs 50-day`},
   flat:{n:"Flat base",b:"Flat",s:"5+ weeks moving sideways in a range no deeper than 15%, after a 20%+ advance",
     rule:"Price above a rising 200-day. The longest stretch ending today whose high-to-low range stays within 15%, at least 5 weeks long, coming after a 20%+ rise in the three months before it. Pivot: the top of the range. Close within 5% of it.",
     d:v=>`${v.dp}% deep over ${v.w} wks`},
@@ -446,7 +449,7 @@ const SETUPS={
     rule:"In the last 5 sessions: an up day whose volume beats the biggest down-day volume of the 10 sessions before it, closing in the upper half of its range, above the 50-day and no more than 5% above the 10-day average. It is an early buy signal inside a base, so the pivot shown is that day's high.",
     d:v=>`${v.ago?v.ago+" day"+(v.ago>1?"s":"")+" ago":"today"} (${fmtDate(v.dt)}), volume ${v.vx}× the largest down day`}
 };
-const ST_ORDER=["vcp","cwh","flat","htf","twt","pp"];
+const ST_ORDER=["vcp","cwh","cwm","flat","htf","twt","pp"];
 const badges=r=>r.st?ST_ORDER.filter(k=>r.st[k]).map(k=>` <span class="pill st ${k}" title="${esc(SETUPS[k].n)}">${SETUPS[k].b}</span>`).join(""):"";
 let stSel="all",stLead=true,stRS=false;
 function renderStrat(){

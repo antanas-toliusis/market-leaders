@@ -27,66 +27,95 @@ def _uptrend(close):
     return s50 and s200 and s200_prev and close[-1] > s200 and s50 > s200 and s200 >= s200_prev
 
 
-def cup_with_handle(close, high, low, vol, dates=None):
-    """U-shaped cup 12-35% deep, 6 to ~55 weeks, right side back near the left lip,
-    then a 1-5 week handle 3-15% deep in the upper half of the cup on lighter volume."""
+def _cup(close, high, low, vol, *, h_days=(5, 25), h_depth=(0.03, 0.15), right_max=1.05,
+         advance=1.25, near=(0.92, 1.05), vol_max=1.0, extra=None):
+    """Shared cup-with-handle search. Returns the most recent valid cup or None.
+    A cup: 25%+ advance into a left lip (local high), 12-35% deep, 30+ days, low in the
+    middle 60% with a week or more in the bottom third (a U, not a V), right lip back
+    near the left. The handle runs from the right lip to today and stays in the upper
+    half of the cup. `extra(close, n, r_i)` can add conditions (e.g. support at an MA)."""
     n = len(close)
     if n < 230 or not _uptrend(close):
         return None
     c = close[-1]
     best = None
-    # candidate left lips: local highs (highest within +-10 days)
     for i in range(max(60, n - 280), n - 40):
         if high[i] != max(high[max(0, i - 10):i + 11]):
             continue
         left = high[i]
-        # prior advance of 25%+ into the left lip
-        if left < min(low[max(0, i - 120):i]) * 1.25:
+        if left < min(low[max(0, i - 120):i]) * advance:
             continue
-        # right lip: highest high after the cup low, at least 5 days before today
-        seg_end = n - 5
+        seg_end = n - h_days[0]
+        if seg_end - i < 32:
+            continue
         lo_i = min(range(i + 1, seg_end), key=lambda k: low[k])
         cup_low = low[lo_i]
         depth = (left - cup_low) / left
-        if not (0.12 <= depth <= 0.35):
-            continue
-        if lo_i >= seg_end - 1:
+        if not (0.12 <= depth <= 0.35) or lo_i >= seg_end - 1:
             continue
         r_i = max(range(lo_i + 1, seg_end), key=lambda k: high[k])
         right = high[r_i]
         cup_days = r_i - i
-        if cup_days < 30 or not (0.90 * left <= right <= 1.05 * left):
+        if cup_days < 30 or not (0.90 * left <= right <= right_max * left):
             continue
-        # U not V: the low sits in the middle 60% of the cup, and the price
-        # spends at least a week in the bottom third
         if not (0.2 <= (lo_i - i) / cup_days <= 0.8):
             continue
         third = cup_low + (left - cup_low) / 3
         if sum(1 for k in range(i, r_i + 1) if close[k] <= third) < 5:
             continue
-        # handle: from the right lip to today
-        h_days = n - 1 - r_i
-        if not (5 <= h_days <= 25):
+        hd = n - 1 - r_i
+        if not (h_days[0] <= hd <= h_days[1]):
             continue
         h_low = min(low[r_i:])
-        h_depth = (right - h_low) / right
-        if not (0.03 <= h_depth <= 0.15):
+        hdep = (right - h_low) / right
+        if not (h_depth[0] <= hdep <= h_depth[1]):
             continue
         if h_low < cup_low + (left - cup_low) / 2:
             continue
-        v_handle = sum(vol[r_i + 1:]) / h_days
+        v_handle = sum(vol[r_i + 1:]) / hd
         v50 = _sma(vol, 50)
-        if not v50 or v_handle > v50 * 1.0:
+        if not v50 or v_handle > v50 * vol_max:
             continue
         pivot = right
-        if not (pivot * 0.92 <= c <= pivot * 1.05):
+        if not (pivot * near[0] <= c <= pivot * near[1]):
+            continue
+        more = extra(close, n, r_i) if extra else {}
+        if more is None:
             continue
         cand = {'p': round(pivot, 2), 'pd': _pd(c, pivot), 'bd': n - i,
-                'cd': round(depth * 100, 1), 'cw': round(cup_days / 5), 'hd': round(h_depth * 100, 1),
-                'hw': round(h_days / 5, 1), 'vr': round(v_handle / v50, 2)}
+                'cd': round(depth * 100, 1), 'cw': round(cup_days / 5), 'hd': round(hdep * 100, 1),
+                'hw': round(hd / 5, 1), 'vr': round(v_handle / v50, 2), **more}
         if best is None or i > best[0]:   # keep the most recent valid cup
             best = (i, cand)
     return best[1] if best else None
+
+
+def cup_with_handle(close, high, low, vol, dates=None):
+    """Classic: a 1-5 week handle 3-15% deep on lighter volume, close near the pivot."""
+    return _cup(close, high, low, vol)
+
+
+def _handle_at_ma(close, n, r_i):
+    """The handle has pulled back to a rising 50-day average and is holding it: close
+    within 3% below to 3% above the 50-day, the 50-day higher than 20 days ago, and no
+    close more than 3% under the 50-day during the handle's last 10 sessions."""
+    c, s50 = close[-1], _sma(close, 50)
+    s50_prev = _sma(close, 50, n - 20)
+    if not (s50 and s50_prev and s50 > s50_prev and 0.97 * s50 <= c <= 1.03 * s50):
+        return None
+    for j in range(max(r_i, n - 10), n):
+        s50j = _sma(close, 50, j + 1)
+        if s50j and close[j] < s50j * 0.97:
+            return None
+    return {'ma': '50d', 'md': _pd(c, s50)}
+
+
+def cup_handle_at_ma(close, high, low, vol, dates=None):
+    """A cup whose handle has drifted back to a rising 50-day and is holding it:
+    handle 1-10 weeks, 3-18% deep, still in the upper half of the cup, close 2-18% under
+    the pivot and within 3% of the 50-day without breaking below it."""
+    return _cup(close, high, low, vol, h_days=(5, 50), h_depth=(0.03, 0.18), right_max=1.15,
+                advance=1.20, near=(0.82, 0.98), vol_max=1.15, extra=_handle_at_ma)
 
 
 def flat_base(close, high, low, vol, dates=None):
@@ -203,6 +232,7 @@ def three_weeks_tight(close, high, low, vol, dates):
 DETECTORS = {
     'vcp': lambda c, h, l, v, d: vcp(c, h, l, v),
     'cwh': cup_with_handle,
+    'cwm': cup_handle_at_ma,
     'flat': flat_base,
     'htf': high_tight_flag,
     'pp': pocket_pivot,
