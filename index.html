@@ -40,6 +40,7 @@ header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-be
 h1{font:700 28px/1.1 var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
 .sub{color:var(--muted);font-size:13px;margin-top:4px}
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg button:focus-visible{outline-offset:-3px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
 .seg button{all:unset;cursor:pointer;padding:7px 11px;font:500 13px var(--f-body);color:var(--muted)}
 .seg button+button{border-left:1px solid var(--line)}
@@ -138,8 +139,12 @@ th.tk{position:sticky;left:0;z-index:2}
 @media (max-width:720px){th[data-k="s"],td.sec{display:none}}
 .grid2 .panel>div[id]{overflow-x:auto}
 /* detail sheet */
-.chartbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.chartbar .hint{font-size:12px;color:var(--muted)}
+.charthead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 16px;flex-wrap:wrap}
+.charthead .legend{flex:1 1 360px;padding-top:6px}
+.chartbar{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:auto}
+.chartbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.chartnotes{font-size:12px;color:var(--muted);text-align:right}
+@media (max-width:720px){.chartbar{align-items:flex-start;margin-left:0}.chartbtns{justify-content:flex-start}.chartnotes{text-align:left}}
 .scrim{position:fixed;inset:0;background:rgba(5,10,20,.45);display:none;align-items:center;justify-content:center;padding:16px 1.5vw;z-index:20}
 .scrim.open{display:flex}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(1400px,100%);max-height:100%;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
@@ -349,8 +354,10 @@ canvas{width:100%;display:block}
       <button type="button" class="close" id="dClose">Close</button>
     </header>
     <div class="kv" id="dKv"></div>
-    <div class="chartbar"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><div class="seg" id="dRng" role="group" aria-label="How much history to show"><button type="button" data-v="1" aria-pressed="true">100%</button><button type="button" data-v="0.5" aria-pressed="false">50%</button><button type="button" data-v="0.25" aria-pressed="false">25%</button></div><span class="hint" id="dRngNote"></span><span class="hint" id="dTfNote"></span></div>
-    <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i>Price bars (open left, close right), up / down</span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
+    <div class="charthead">
+      <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i>Price bars (open left, close right), up / down</span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
+      <div class="chartbar"><div class="chartbtns"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><div class="seg" id="dRng" role="group" aria-label="How much history to show"><button type="button" data-v="1" aria-pressed="true">100%</button><button type="button" data-v="0.5" aria-pressed="false">50%</button><button type="button" data-v="0.25" aria-pressed="false">25%</button></div></div><div class="chartnotes"><span class="hint" id="dRngNote"></span> <span class="hint" id="dTfNote"></span></div></div>
+    </div>
     <canvas id="cPrice" height="330"></canvas>
     <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i><span id="dVolAvg">50-day average volume</span></span><span id="dVolNow"></span></div>
     <canvas id="cVol" height="110"></canvas>
@@ -879,7 +886,7 @@ function chart(cv,series,col,ref100,rs,dates,cd){
     }
   }
   if(cd){ // OHLC bars: high-low line, open tick left, close tick right; green up, red down
-    const slot=(W-L-R)/Math.max(1,n-1),barW=Math.max(1.6,Math.min(3.5,slot*0.45)),tk=Math.max(2,Math.min(8,slot*0.5));
+    const slot=(W-L-R)/Math.max(1,n-1),barW=Math.max(1.3,Math.min(2.6,slot*0.34)),tk=Math.max(1.8,Math.min(6,slot*0.42));
     for(let i=0;i<n;i++){const c=cd.c[i];if(c==null)continue;
       const o=cd.o[i]??c,hi=cd.h[i]??Math.max(o,c),lo=cd.l[i]??Math.min(o,c),up=c>=o,xx=x(i);
       g.strokeStyle=up?cd.up:cd.down;g.lineWidth=barW;
