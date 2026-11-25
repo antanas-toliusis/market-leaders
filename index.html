@@ -346,8 +346,8 @@ canvas{width:100%;display:block}
       <button type="button" class="close" id="dClose">Close</button>
     </header>
     <div class="kv" id="dKv"></div>
-    <div class="chartbar"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><span class="hint" id="dTfNote"></span></div>
-    <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i>Price candles, up / down</span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
+    <div class="chartbar"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><div class="seg" id="dSty" role="group" aria-label="Price style"><button type="button" data-v="c" aria-pressed="true">Candles</button><button type="button" data-v="b" aria-pressed="false">Bars</button></div><span class="hint" id="dTfNote"></span></div>
+    <div class="legend"><span><i style="background:var(--up);width:6px;height:10px"></i><i style="background:var(--down);width:6px;height:10px"></i><span id="dStyLeg">Price candles, up / down</span></span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
     <canvas id="cPrice" height="330"></canvas>
     <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i><span id="dVolAvg">50-day average volume</span></span><span id="dVolNow"></span></div>
     <canvas id="cVol" height="110"></canvas>
@@ -784,13 +784,16 @@ function openDetail(t){
   requestAnimationFrame(()=>drawDetail(r));
   $("dClose").focus();
 }
-let detailRow=null,chartTf="d",W=null,Wp=null;
+let detailRow=null,chartTf="d",W=null,Wp=null,chartSty="c";
+try{if(localStorage.getItem("ml-chart-style")==="b")chartSty="b"}catch(e){}
 let O=null,Op=null;
 function loadOhlc(){return Op??=fetch("ohlc.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>O=j).catch(e=>{Op=null;throw e})}
 function loadWeekly(){return Wp??=fetch("weekly.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>W=j).catch(e=>{Wp=null;throw e})}
 async function drawDetail(r){
   const css=getComputedStyle(document.documentElement);const col=n=>css.getPropertyValue(n).trim();
   $("dTf").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===chartTf));
+  $("dSty").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===chartSty));
+  $("dStyLeg").textContent=chartSty==="b"?"Price bars (open left, close right), up / down":"Price candles, up / down";
   const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
   let c,v,dates,rs,ma1,ma2,volN,pivotSpan,nh=r.nh;
   if(chartTf==="w"){
@@ -817,7 +820,7 @@ async function drawDetail(r){
     if(oh)$("dTfNote").textContent="";$("dMa1").textContent="50-day";$("dMa2").textContent="200-day";$("dVolAvg").textContent="50-day average volume";
   }
   const ser=[{d:ma1,c:col("--warn"),w:1.4},{d:ma2,c:col("--muted"),w:1.4}];
-  cd.up=col("--up");cd.down=col("--down");
+  cd.up=col("--up");cd.down=col("--down");cd.bars=chartSty==="b";
   if(pk)ser.push({d:c.map((_,i)=>i>=c.length-pivotSpan?r.st[pk].p:null),c:col("--accent"),w:1,dash:true});
   const f=rs.find(x=>x!=null);
   chart($("cPrice"),ser,col,false,{d:rs.map(x=>x==null?null:x/f*100),c:col("--rs"),nh},dates,cd);
@@ -829,6 +832,7 @@ async function drawDetail(r){
   else $("dVolNow").textContent=last&&avg?`Latest ${chartTf==="w"?"week":"day"}: ${(last/avg).toFixed(1)}× its ${volN}-${chartTf==="w"?"week":"day"} average`:"";
 }
 $("dTf").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartTf=b.dataset.v;drawDetail(detailRow)});
+$("dSty").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartSty=b.dataset.v;try{localStorage.setItem("ml-chart-style",chartSty)}catch(err){}drawDetail(detailRow)});
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
 function chart(cv,series,col,ref100,rs,dates,cd){
   dates=dates||D.dates;
@@ -853,12 +857,14 @@ function chart(cv,series,col,ref100,rs,dates,cd){
         g.font="600 11px "+col("--f-body");g.textAlign="right";g.fillText(rs.nh?"RS new high":"RS",x(last)-12,ry(rs.d[last])+4)}
     }
   }
-  if(cd){ // candles: wick from low to high, body from open to close; green up, red down
+  if(cd){ // candles (wick low-high, body open-close) or OHLC bars (open tick left, close tick right); green up, red down
     const slot=(W-L-R)/Math.max(1,n-1),bw=Math.max(1,Math.min(14,slot*0.7));
     for(let i=0;i<n;i++){const c=cd.c[i];if(c==null)continue;
       const o=cd.o[i]??c,hi=cd.h[i]??Math.max(o,c),lo=cd.l[i]??Math.min(o,c),up=c>=o,xx=x(i);
       g.strokeStyle=g.fillStyle=up?cd.up:cd.down;g.lineWidth=1;
       g.beginPath();g.moveTo(Math.round(xx)+.5,y(hi));g.lineTo(Math.round(xx)+.5,y(lo));g.stroke();
+      if(cd.bars){const tk=Math.max(1.5,bw/2),px=Math.round(xx)+.5;g.lineWidth=Math.max(1,Math.min(2,slot*0.25));
+        g.beginPath();g.moveTo(px-tk,y(o));g.lineTo(px,y(o));g.moveTo(px,y(c));g.lineTo(px+tk,y(c));g.stroke();continue}
       const top=y(Math.max(o,c)),bh=Math.max(1,Math.abs(y(o)-y(c)));g.fillRect(xx-bw/2,top,bw,bh);}
   }
   series.forEach(s=>{g.strokeStyle=s.c;g.lineWidth=s.w;g.setLineDash(s.dash?[5,4]:[]);g.beginPath();let st=false,first=null,last=null;s.d.forEach((v,i)=>{if(v==null){st=false;return}if(!st){g.moveTo(x(i),y(v));st=true;if(first==null)first=i}else g.lineTo(x(i),y(v));last=i});g.stroke();g.setLineDash([]);
