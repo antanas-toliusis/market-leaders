@@ -180,6 +180,7 @@ canvas{width:100%;display:block}
   <nav class="tabs" aria-label="Views">
     <a href="#leaders" id="tabLeaders" aria-current="page">Leaders</a>
     <a href="#strategies" id="tabStrat">Strategies</a>
+    <a href="#scanners" id="tabScan">Scanners</a>
     <a href="#daily" id="tabDaily">Daily update</a>
   </nav>
 
@@ -257,6 +258,21 @@ canvas{width:100%;display:block}
     <section class="panel">
       <div class="ph"><h2>How each setup is detected</h2><span class="hint">Scanned every night from daily highs, lows, closes and volume</span></div>
       <dl class="rules" id="stRules"></dl>
+    </section>
+  </div>
+
+  <div class="view" id="viewScan" hidden>
+    <section class="panel">
+      <div class="ph"><h2>Scanners</h2><div class="days" id="scDays" role="group" aria-label="Trading day"></div></div>
+      <div class="note" id="scNote"></div>
+      <div class="scards" id="scCards"></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2 id="scListTitle">Results</h2><span class="hint">Tap a column to sort, a stock for its chart.</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr id="scHead"><th class="l tk" data-k="t">Stock</th><th class="l" data-k="s">Sector</th><th data-k="px">Price</th><th data-k="chg">Chg %</th><th data-k="vol">Vol</th><th data-k="a10">Avg vol 10D</th><th data-k="rv" title="Volume ÷ 10-day average volume">Rel vol</th><th data-k="rating">RS rating</th><th class="l" data-k="lead">Leader</th><th class="l">Setups</th></tr></thead>
+        <tbody id="scTb2"></tbody></table></div>
+      <div class="empty" id="scEmpty" hidden>No S&amp;P 500 stock matched this scanner on that day. Try another day.</div>
     </section>
   </div>
 
@@ -388,7 +404,7 @@ function render(){
   $("sSec").textContent=list[0]?.k??"–";$("sSecN").textContent=list[0]?`${list[0].l} of ${list[0].n} stocks beating the index`:"";
   $("sectors").innerHTML=list.map(x=>`<div class="sbar${sector===x.k?" on":""}" tabindex="0" role="button" aria-pressed="${sector===x.k}" data-s="${esc(x.k)}"><span class="nm">${esc(x.k)}</span><span class="track"><i style="width:${(x.p*100).toFixed(1)}%"></i></span><span class="ct">${x.l}/${x.n}</span></div>`).join("");
   renderTable();
-  dyCache={};if(view==="daily")renderDaily();if(view==="strategies")renderStrat();
+  dyCache={};if(view==="daily")renderDaily();if(view==="strategies")renderStrat();if(view==="scanners")renderScan();
 }
 
 function renderTable(){
@@ -484,6 +500,45 @@ $("stRS80").addEventListener("click",e=>{stRS=!stRS;e.currentTarget.setAttribute
 $("viewStrat").addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});
 $("viewStrat").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}});
 
+// scanners: each test gets one stock's figures for the chosen session
+const SCANNERS=[
+  {id:"powerbar",n:"Power Bar on Volume",s:"Up 10% or more on the day on 4M+ shares (market cap over $1B, which every S&P 500 member meets)",
+   test:x=>x.chg>=0.10&&x.vol>=4e6},
+];
+let scId="powerbar",scK=0,scSort="chg",scDir=-1;
+function scanRows(k){
+  const N=D.dates.length,j=N-1-k,rows=[],byT=new Map(C.rows.map(r=>[r.t,r]));
+  for(const s of D.stocks){const c=s.c,v=s.v||[];if(c[j]==null||c[j-1]==null||!v[j])continue;
+    if(s.md&&(s.md.includes(D.dates[j])||s.md.includes(D.dates[j-1])))continue; // skip carried-over prices
+    let a=0,n=0;for(let i=j-10;i<j;i++)if(v[i]){a+=v[i];n++}
+    const r=byT.get(s.t)||{};
+    rows.push({t:s.t,n:s.n,s:s.s,px:c[j],chg:c[j]/c[j-1]-1,vol:v[j]*1000,a10:n?a/n*1000:null,rv:n?v[j]/(a/n):null,rating:r.rating,lead:r.beats?1:0,st:r.st,c,j});
+  }
+  return rows;
+}
+function renderScan(){
+  const N=D.dates.length;
+  $("scDays").innerHTML=Array.from({length:10},(_,k)=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===scK}">${new Date(D.dates[N-1-k]+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</button>`).join("");
+  const all=scanRows(scK);
+  $("scNote").textContent=`Scans every S&P 500 member on the close of ${fmtDate(D.dates[N-1-scK])}. Pick a day above to see past sessions. Stocks outside the S&P 500 are not covered.`;
+  $("scCards").innerHTML=SCANNERS.map(S=>{const c=all.filter(S.test).length;return `<button type="button" class="scard" data-id="${S.id}" aria-pressed="${S.id===scId}"><span class="top"><b>${esc(S.n)}</b><span class="num${c?"":" zero"}">${c}</span></span><p>${esc(S.s)}</p></button>`}).join("");
+  const S=SCANNERS.find(x=>x.id===scId);
+  const list=all.filter(S.test).sort((a,b)=>{let x=a[scSort],y=b[scSort];if(x==null)return 1;if(y==null)return -1;return typeof x==="string"?scDir*x.localeCompare(y):scDir*(x-y)});
+  $("scListTitle").textContent=`${S.n}: ${list.length} stock${list.length===1?"":"s"}`;
+  $("scEmpty").hidden=list.length>0;
+  const vf=x=>x==null?"–":x>=1e9?(x/1e9).toFixed(2)+"B":x>=1e6?(x/1e6).toFixed(2)+"M":(x/1e3).toFixed(0)+"K";
+  $("scTb2").innerHTML=list.map(x=>`<tr tabindex="0" data-t="${esc(x.t)}"><td class="tk"><b>${esc(x.t)}</b><span>${esc(x.n)}</span></td><td class="l sec">${esc(x.s)}</td>
+    <td>${x.px.toFixed(2)}</td><td class="${cls(x.chg)}">${pct(x.chg,2)}</td><td>${vf(x.vol)}</td><td>${vf(x.a10)}</td>
+    <td${x.rv>=2?' class="pos" style="font-weight:600"':""}>${x.rv==null?"–":x.rv.toFixed(2)}</td><td>${x.rating!=null?ratingCell(x):"–"}</td>
+    <td class="l">${x.lead?'<span class="pill up">Leader</span>':'<span class="pill mid">No</span>'}</td><td class="l">${badges(x)}</td></tr>`).join("");
+  document.querySelectorAll("#scHead th[data-k]").forEach(th=>{if(th.dataset.k===scSort)th.setAttribute("aria-sort",scDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
+}
+$("scDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;scK=+b.dataset.k;renderScan()});
+$("scCards").addEventListener("click",e=>{const b=e.target.closest(".scard");if(!b)return;scId=b.dataset.id;renderScan()});
+$("scHead").addEventListener("click",e=>{const th=e.target.closest("th[data-k]");if(!th)return;const k=th.dataset.k;if(scSort===k)scDir*=-1;else{scSort=k;scDir=(k==="t"||k==="s")?1:-1}renderScan()});
+$("viewScan").addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});
+$("viewScan").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}});
+
 // breakouts from setups
 let boW=60,boVol=false,scVol=false;const VOLX=1.4;
 const STATUS={holding:'<span class="pill up">Above pivot</span>',below:'<span class="pill mid">Back under pivot</span>',failed:'<span class="pill dn" title="Closed more than 8% under the breakout-day close">Stopped out (−8%)</span>'};
@@ -564,11 +619,12 @@ function renderDaily(){
   if(left.length>15)$("dyOut").insertAdjacentHTML("beforeend",`<div class="note">and ${left.length-15} more</div>`);
 }
 function route(){
-  view={"#daily":"daily","#strategies":"strategies"}[location.hash]||"leaders";
-  const V={leaders:["viewLeaders","tabLeaders"],strategies:["viewStrat","tabStrat"],daily:["viewDaily","tabDaily"]};
+  view={"#daily":"daily","#strategies":"strategies","#scanners":"scanners"}[location.hash]||"leaders";
+  const V={leaders:["viewLeaders","tabLeaders"],strategies:["viewStrat","tabStrat"],scanners:["viewScan","tabScan"],daily:["viewDaily","tabDaily"]};
   for(const [k,[v,t]] of Object.entries(V)){$(v).hidden=k!==view;if(k===view)$(t).setAttribute("aria-current","page");else $(t).removeAttribute("aria-current")}
   if(view==="daily"&&C)renderDaily();
   if(view==="strategies"&&C)renderStrat();
+  if(view==="scanners"&&C)renderScan();
 }
 window.addEventListener("hashchange",route);
 $("dyDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;dyK=+b.dataset.k;renderDaily()});
