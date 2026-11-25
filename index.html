@@ -860,7 +860,7 @@ async function drawDetail(r){
     rs=c.map((x,i)=>x!=null&&b[i]?x/b[i]:null);
     const win=rs.slice(-52).filter(x=>x!=null);nh=win.length>1&&rs[rs.length-1]>=Math.max(...win)*0.995;
     pivotSpan=pk?Math.max(1,Math.ceil(r.st[pk].bd/5)):0;
-    $("dTfNote").textContent=`${c.length} weeks, each bar one week${W.partial?"; the last bar is the current week so far":""}.`;
+    $("dTfNote").textContent=`Each bar is one week${W.partial?"; the last is the current week so far":""}.`;
     $("dMa1").textContent="10-week";$("dMa2").textContent="72-week";$("dVolAvg").textContent="10-week average volume";
   }else{
     if(!O)$("dTfNote").textContent="Loading price bars…";
