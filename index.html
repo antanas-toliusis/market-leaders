@@ -135,6 +135,8 @@ th.tk{position:sticky;left:0;z-index:2}
 .note{padding:10px 14px;font-size:12.5px;color:var(--muted)}
 @media (max-width:720px){.grid2{grid-template-columns:1fr}}
 /* detail sheet */
+.chartbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.chartbar .hint{font-size:12px;color:var(--muted)}
 .scrim{position:fixed;inset:0;background:rgba(5,10,20,.45);display:none;align-items:center;justify-content:center;padding:16px 1.5vw;z-index:20}
 .scrim.open{display:flex}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(1400px,100%);max-height:100%;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
@@ -263,7 +265,8 @@ canvas{width:100%;display:block}
 
   <div class="view" id="viewScan" hidden>
     <section class="panel">
-      <div class="ph"><h2>Scanners</h2><div class="days" id="scDays" role="group" aria-label="Trading day"></div></div>
+      <div class="ph"><h2>Scanners</h2><div class="seg" id="scTf" role="group" aria-label="Scanner timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div></div>
+      <div class="ph" style="border-bottom:0;padding-bottom:0"><div class="days" id="scDays" role="group" aria-label="Session to scan"></div></div>
       <div class="note" id="scNote"></div>
       <div class="scards" id="scCards"></div>
     </section>
@@ -295,6 +298,23 @@ canvas{width:100%;display:block}
       <section class="panel"><div class="ph"><h2>RS line at a new high</h2><span class="hint">Fresh 52-week high today</span></div><div id="dyNHL"></div></section>
       <section class="panel"><div class="ph"><h2>Top movers among leaders</h2><span class="hint">Price change on the day</span></div><div id="dyMov"></div></section>
     </div>
+    <section class="panel" id="wrPanel">
+      <div class="ph"><h2 id="wrTitle">Weekly review</h2><div class="days" id="wrWeeks" role="group" aria-label="Week"></div></div>
+      <div class="note" id="wrNote"></div>
+    </section>
+    <section class="strip" aria-label="Week summary">
+      <div class="stat"><div class="k">Index over the week</div><div class="v" id="wrIdx">–</div><div class="n">S&amp;P 500 equal-weight (RSP)</div></div>
+      <div class="stat"><div class="k">Leaders at the week's close</div><div class="v" id="wrLead">–</div><div class="n" id="wrLeadN"></div></div>
+      <div class="stat"><div class="k">Joined / left over the week</div><div class="v" id="wrInOut">–</div><div class="n">vs the previous week's close</div></div>
+      <div class="stat"><div class="k">Breakouts during the week</div><div class="v" id="wrBo">–</div><div class="n" id="wrBoN"></div></div>
+    </section>
+    <div class="grid2">
+      <section class="panel"><div class="ph"><h2>Joined the leaders</h2><span class="hint">Beating the index at the week's close, not the week before</span></div><div id="wrIn"></div></section>
+      <section class="panel"><div class="ph"><h2>Left the leaders</h2><span class="hint">No longer beating the index</span></div><div id="wrOut"></div></section>
+      <section class="panel"><div class="ph"><h2>Biggest RS rating gains</h2><span class="hint">Over the week, among leaders</span></div><div id="wrUp"></div></section>
+      <section class="panel"><div class="ph"><h2>Biggest RS rating drops</h2><span class="hint">Over the week, among leaders</span></div><div id="wrDn"></div></section>
+    </div>
+    <section class="panel"><div class="ph"><h2>Breakouts during the week</h2><span class="hint">From setups; status is as of the latest close</span></div><div id="wrBoList"></div></section>
     <section class="panel" id="boPanel">
       <div class="ph"><h2>Breakouts from setups</h2>
         <div class="filters" id="boWin"><button type="button" class="chip" data-w="5" aria-pressed="false">Last 5 days</button><button type="button" class="chip" data-w="20" aria-pressed="false">20 days</button><button type="button" class="chip" data-w="60" aria-pressed="true">60 days</button><button type="button" class="chip" id="boVolOnly" aria-pressed="false" title="Breakout-day volume at least 1.4× its 50-day average">Volume-confirmed (≥1.4×)</button></div></div>
@@ -326,9 +346,10 @@ canvas{width:100%;display:block}
       <button type="button" class="close" id="dClose">Close</button>
     </header>
     <div class="kv" id="dKv"></div>
-    <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
+    <div class="chartbar"><div class="seg" id="dTf" role="group" aria-label="Chart timeframe"><button type="button" data-v="d" aria-pressed="true">Daily</button><button type="button" data-v="w" aria-pressed="false">Weekly</button></div><span class="hint" id="dTfNote"></span></div>
+    <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i><span id="dMa1">50-day</span></span><span><i style="background:var(--muted)"></i><span id="dMa2">200-day</span></span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
     <canvas id="cPrice" height="330"></canvas>
-    <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i>50-day average volume</span><span id="dVolNow"></span></div>
+    <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i><span id="dVolAvg">50-day average volume</span></span><span id="dVolNow"></span></div>
     <canvas id="cVol" height="110"></canvas>
   </div>
 </div>
@@ -519,7 +540,35 @@ const SCANNERS=[
   {id:"nr7",n:"Tight day (NR7) in a leader",s:"The narrowest daily range of the last 7 sessions, in a leader above its 50-day and within 15% of its high",
    test:x=>x.nr7&&x.lead&&x.d50!=null&&x.d50>0&&x.offHi>=-0.15,d:x=>`narrowest range in 7 days, ${pct(x.offHi,1)} from high`},
 ];
-let scId="powerbar",scK=0,scSort="chg",scDir=-1;
+let scId="powerbar",scK=0,scSort="chg",scDir=-1,scTf="d",wsId="bigvol",wsK=0;
+// weekly scanners: same row shape as the daily ones, measured on weekly bars
+const WSCANNERS=[
+  {id:"bigvol",n:"Big-volume week",s:"An up week on the highest weekly volume of the last 10+ weeks: often institutions buying",
+   test:x=>x.chg>0&&x.v>0&&x.v>=x.maxv10,d:x=>`${pct(x.chg,1)} week on the biggest volume in 11 weeks`},
+  {id:"wpower",n:"Weekly power bar",s:"Up 10% or more on the week on above-average weekly volume",
+   test:x=>x.chg>=0.10&&x.rv>=1,d:x=>`${pct(x.chg,1)} week on ${x.rv.toFixed(1)}× 10-week volume`},
+  {id:"w10",n:"Support at the 10-week line",s:"A leader dipping to a rising 10-week line and closing in the upper half of the week's range",
+   test:x=>x.lead&&x.ma10&&x.ma10up&&x.l<=x.ma10*1.01&&x.px>=x.ma10&&x.pos>=0.5,d:x=>`low ${pct(x.l/x.ma10-1,1)} vs 10-week, closed ${Math.round(x.pos*100)}% up the range`},
+  {id:"wor",n:"Weekly outside reversal",s:"Takes out the prior week's high and low, then closes lower in the bottom half: a warning",
+   test:x=>x.h>x.ph&&x.l<x.pl&&x.px<x.pc&&x.pos<0.5,d:x=>`outside week, closed ${pct(x.chg,1)} in the bottom half`},
+  {id:"w3t",n:"3-weeks-tight",s:"Three weekly closes within 1.5% of each other, above the 40-week line",
+   test:x=>x.tight!=null&&x.tight<=0.015&&x.ma40&&x.px>x.ma40,d:x=>`weekly closes within ${(x.tight*100).toFixed(2)}%`},
+];
+function wscanRows(i){
+  const N=D.dates.length,wk=W.weeks,rows=[],di=D.dates.indexOf(wk[i]),k=di>=0?N-1-di:null,byT=k!=null?new Map(snap(k).rows.map(r=>[r.t,r])):new Map();
+  const lastW=i===wk.length-1;
+  for(const s of D.stocks){const ws=W.s[s.t];if(!ws)continue;const c=ws.c,hh=ws.h,ll=ws.l,v=ws.v;
+    if(c[i]==null||c[i-1]==null||!v[i]||hh[i]==null)continue;
+    if(s.md&&s.md.some(d=>d>wk[i-1]&&d<=wk[i]))continue;    // week has carried-over prices
+    const r=byT.get(s.t)||{};let a=0,n=0,mxv=0;for(let q=i-10;q<i;q++)if(v[q]){a+=v[q];n++;if(v[q]>mxv)mxv=v[q]}
+    const cl3=c.slice(i-2,i+1);
+    rows.push({t:s.t,n:s.n,s:s.s,px:c[i],chg:c[i]/c[i-1]-1,v:v[i],vol:v[i]*1000,a10:n?a/n*1000:null,rv:n?v[i]/(a/n):null,maxv10:mxv,
+      rating:r.rating,lead:r.beats?1:0,st:lastW?r.st:null,h:hh[i],l:ll[i],ph:hh[i-1],pl:ll[i-1],pc:c[i-1],
+      pos:hh[i]>ll[i]?(c[i]-ll[i])/(hh[i]-ll[i]):0.5,ma10:sma(c,10,i),ma10up:sma(c,10,i)>sma(c,10,i-1),ma40:sma(c,40,i),
+      tight:cl3.includes(null)?null:(Math.max(...cl3)-Math.min(...cl3))/Math.min(...cl3)});
+  }
+  return rows;
+}
 function scanRows(k){
   const N=D.dates.length,j=N-1-k,rows=[],byT=new Map(snap(k).rows.map(r=>[r.t,r])),b=D.bench[bench],day=D.dates[j];
   const mx=(a,from,to)=>{let m=-Infinity;for(let i=Math.max(0,from);i<=to;i++)if(a[i]!=null&&a[i]>m)m=a[i];return m===-Infinity?null:m};
@@ -538,6 +587,9 @@ function scanRows(k){
   return rows;
 }
 function renderScan(){
+  $("scTf").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===scTf));
+  if(scTf==="w")return renderWScan();
+  setScHead(false);
   const N=D.dates.length;
   $("scDays").innerHTML=Array.from({length:10},(_,k)=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===scK}">${new Date(D.dates[N-1-k]+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</button>`).join("");
   const all=scanRows(scK);
@@ -554,8 +606,35 @@ function renderScan(){
     <td class="l">${x.lead?'<span class="pill up">Leader</span>':'<span class="pill mid">No</span>'}</td><td class="l det">${esc(S.d(x))}</td><td class="l">${badges(x)}</td></tr>`).join("");
   document.querySelectorAll("#scHead th[data-k]").forEach(th=>{if(th.dataset.k===scSort)th.setAttribute("aria-sort",scDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
 }
-$("scDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;scK=+b.dataset.k;renderScan()});
-$("scCards").addEventListener("click",e=>{const b=e.target.closest(".scard");if(!b)return;scId=b.dataset.id;renderScan()});
+function setScHead(weekly){
+  const lab=weekly?{chg:"Chg % (week)",vol:"Vol (week)",a10:"Avg vol 10W"}:{chg:"Chg %",vol:"Vol",a10:"Avg vol 10D"};
+  for(const [k,t] of Object.entries(lab)){const th=document.querySelector(`#scHead th[data-k="${k}"]`);if(th)th.textContent=t}
+  const rv=document.querySelector('#scHead th[data-k="rv"]');if(rv)rv.title=weekly?"Week's volume ÷ 10-week average":"Volume ÷ 10-day average volume";
+}
+async function renderWScan(){
+  setScHead(true);
+  if(!W){$("scNote").textContent="Loading weekly bars…";$("scCards").innerHTML="";$("scTb2").innerHTML="";
+    try{await loadWeekly()}catch(e){$("scNote").textContent="Couldn't load the weekly data. Reload the page to try again.";return}
+    if(scTf!=="w")return;}
+  const wk=W.weeks,L=wk.length-1,i=L-wsK;
+  $("scDays").innerHTML=Array.from({length:8},(_,k)=>{const d=wk[L-k],cur=k===0&&W.partial;return `<button type="button" class="chip" data-k="${k}" aria-pressed="${k===wsK}">${cur?"This week (to "+new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short"})+")":"w/e "+new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</button>`}).join("");
+  const all=wscanRows(i),ok=S=>x=>{try{return S.test(x)}catch(e){return false}};
+  $("scNote").textContent=`Weekly bars for the week ending ${fmtDate(wk[i])}${wsK===0&&W.partial?" (still in progress: the week has not closed)":""}. Leader status and RS rating are as of that week's last session. 3-weeks-tight is also tracked as a setup in the Strategies tab.`;
+  $("scCards").innerHTML=WSCANNERS.map(S=>{const c=all.filter(ok(S)).length;return `<button type="button" class="scard" data-id="${S.id}" aria-pressed="${S.id===wsId}"><span class="top"><b>${esc(S.n)}</b><span class="num${c?"":" zero"}">${c}</span></span><p>${esc(S.s)}</p></button>`}).join("");
+  const S=WSCANNERS.find(x=>x.id===wsId);
+  const list=all.filter(ok(S)).sort((a,b)=>{let x=a[scSort],y=b[scSort];if(x==null)return 1;if(y==null)return -1;return typeof x==="string"?scDir*x.localeCompare(y):scDir*(x-y)});
+  $("scListTitle").textContent=`${S.n}: ${list.length} stock${list.length===1?"":"s"}`;
+  $("scEmpty").hidden=list.length>0;
+  const vf=x=>x==null?"–":x>=1e9?(x/1e9).toFixed(2)+"B":x>=1e6?(x/1e6).toFixed(2)+"M":(x/1e3).toFixed(0)+"K";
+  $("scTb2").innerHTML=list.map(x=>`<tr tabindex="0" data-t="${esc(x.t)}"><td class="tk"><b>${esc(x.t)}</b><span>${esc(x.n)}</span></td><td class="l sec">${esc(x.s)}</td>
+    <td>${x.px.toFixed(2)}</td><td class="${cls(x.chg)}">${pct(x.chg,2)}</td><td>${vf(x.vol)}</td><td>${vf(x.a10)}</td>
+    <td${x.rv>=2?' class="pos" style="font-weight:600"':""}>${x.rv==null?"–":x.rv.toFixed(2)}</td><td>${x.rating!=null?ratingCell(x):"–"}</td>
+    <td class="l">${x.lead?'<span class="pill up">Leader</span>':'<span class="pill mid">No</span>'}</td><td class="l det">${esc(S.d(x))}</td><td class="l">${badges(x)}</td></tr>`).join("");
+  document.querySelectorAll("#scHead th[data-k]").forEach(th=>{if(th.dataset.k===scSort)th.setAttribute("aria-sort",scDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
+}
+$("scTf").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;scTf=b.dataset.v;renderScan()});
+$("scDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;if(scTf==="w")wsK=+b.dataset.k;else scK=+b.dataset.k;renderScan()});
+$("scCards").addEventListener("click",e=>{const b=e.target.closest(".scard");if(!b)return;if(scTf==="w")wsId=b.dataset.id;else scId=b.dataset.id;renderScan()});
 $("scHead").addEventListener("click",e=>{const th=e.target.closest("th[data-k]");if(!th)return;const k=th.dataset.k;if(scSort===k)scDir*=-1;else{scSort=k;scDir=(k==="t"||k==="s")?1:-1}renderScan()});
 $("viewScan").addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});
 $("viewScan").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}});
@@ -605,8 +684,47 @@ function miniTable(list,cols,emptyMsg){
 }
 const ratingCell=r=>`<span class="rs"><em>${r.rating??"–"}</em><span class="track"><i style="width:${r.rating??0}%"></i></span></span>`;
 const dayCell=r=>`<span class="${cls(r.day)}">${pct(r.day)}</span>`;
+// weekly review: completed weeks from the daily calendar (ISO weeks)
+function isoWeek(ds){const d=new Date(ds+"T12:00:00Z");const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=t.getUTCFullYear();return y*100+Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7)}
+function dailyWeeks(){
+  const ws=[];D.dates.forEach((d,i)=>{const k=isoWeek(d);if(ws.length&&ws[ws.length-1].k===k)ws[ws.length-1].end=i;else ws.push({k,start:i,end:i})});
+  const last=D.dates[D.dates.length-1];if(new Date(last+"T12:00:00Z").getUTCDay()!==5)ws.pop();   // current week not finished
+  return ws;
+}
+let wrK=0;
+function renderWeekly(){
+  const ws=dailyWeeks(),N=D.dates.length,wi=ws.length-1-wrK,w=ws[wi],pw=ws[wi-1];
+  if(!w||!pw){$("wrNote").textContent="Not enough history for a weekly review.";return}
+  $("wrWeeks").innerHTML=Array.from({length:Math.min(4,ws.length-1)},(_,k)=>{const x=ws[ws.length-1-k];return `<button type="button" class="chip" data-k="${k}" aria-pressed="${k===wrK}">w/e ${new Date(D.dates[x.end]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</button>`}).join("");
+  const T=snap(N-1-w.end),P=snap(N-1-pw.end),prev=new Map(P.rows.map(r=>[r.t,r]));
+  $("wrTitle").textContent=`Weekly review, week ending ${fmtDate(D.dates[w.end])}`;
+  $("wrNote").textContent=`Close of ${fmtDate(D.dates[w.end])} compared with the previous week's close (${fmtDate(D.dates[pw.end])}). Leaders follow the lookback picked at the top (${LB[lb]}).`;
+  const b=D.bench[bench],ich=b[w.end]/b[pw.end]-1;
+  $("wrIdx").innerHTML=`<span class="${cls(ich)}">${pct(ich,2)}</span>`;
+  const lead=T.rows.filter(r=>r.beats),pl=P.rows.filter(r=>r.beats).length,dl=lead.length-pl;
+  $("wrLead").textContent=lead.length;$("wrLeadN").textContent=`${dl>0?"+":""}${dl} vs the week before (${pl})`;
+  const joined=lead.filter(r=>!prev.get(r.t)?.beats).sort((a,b)=>(b.rating??0)-(a.rating??0));
+  const left=T.rows.filter(r=>!r.beats&&prev.get(r.t)?.beats).sort((a,b)=>(b.rating??0)-(a.rating??0));
+  $("wrInOut").innerHTML=`<span class="pos">+${joined.length}</span> / <span class="neg">−${left.length}</span>`;
+  const wk=r=>{const c=r.c;return c[w.end]&&c[pw.end]?c[w.end]/c[pw.end]-1:null};
+  const wkCell=r=>{const x=wk(r);return `<span class="${cls(x)}">${pct(x,1)}</span>`};
+  const was=r=>`<span class="sec">was ${prev.get(r.t)?.rating??"–"}</span>`;
+  lead.forEach(r=>{const p=prev.get(r.t);r.wR=p&&p.rating!=null&&r.rating!=null?r.rating-p.rating:null});
+  const dR=r=>`<span class="${cls(r.wR)}">${r.wR>0?"+":""}${r.wR}</span>`;
+  $("wrIn").innerHTML=miniTable(joined.slice(0,12),[ratingCell,was,wkCell],"No stocks joined the leaders this week.")+(joined.length>12?`<div class="note">and ${joined.length-12} more</div>`:"");
+  $("wrOut").innerHTML=miniTable(left.slice(0,12),[ratingCell,was,wkCell],"No leaders dropped out this week.")+(left.length>12?`<div class="note">and ${left.length-12} more</div>`:"");
+  $("wrUp").innerHTML=miniTable(lead.filter(r=>r.wR>0).sort((a,b)=>b.wR-a.wR).slice(0,10),[ratingCell,dR,wkCell],"No rating gains this week.");
+  $("wrDn").innerHTML=miniTable(lead.filter(r=>r.wR<0).sort((a,b)=>a.wR-b.wR).slice(0,10),[ratingCell,dR,wkCell],"No rating drops this week.");
+  const from=D.dates[w.start],to=D.dates[w.end],bo=boGroups().filter(e=>e.bd>=from&&e.bd<=to).sort((a,b)=>b.bv-a.bv);
+  $("wrBo").textContent=bo.length;$("wrBoN").textContent=bo.length?`${bo.filter(e=>e.st==="holding").length} still above the pivot, ${bo.filter(e=>(e.bv??0)>=VOLX).length} on 1.4×+ volume`:"none this week";
+  const byT=new Map(D.stocks.map(s=>[s.t,s]));
+  $("wrBoList").innerHTML=bo.length?`<div class="tblwrap"><table class="mini"><tbody>${bo.map(e=>`<tr tabindex="0" data-t="${esc(e.t)}"><td class="tk"><b>${esc(e.t)}</b><span>${esc(byT.get(e.t)?.n||"")}</span></td><td class="l">${fmtDate(e.bd)}</td><td class="l">${e.ks.map(k=>`<span class="pill st">${SETUPS[k].b}</span>`).join(" ")}</td><td>pivot ${e.p.toFixed(2)}</td><td>vol ${e.bv==null?"–":e.bv.toFixed(1)+"×"}</td><td class="${e.g?cls(e.g):""}">${e.g>0?"+":""}${e.g}% since</td><td class="l">${STATUS[e.st]}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No breakouts from setups during this week.</div>`;
+}
+$("wrWeeks").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;wrK=+b.dataset.k;renderWeekly()});
+["wrIn","wrOut","wrUp","wrDn","wrBoList"].forEach(id=>{$(id).addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}})});
 function renderDaily(){
   renderBreakouts();
+  renderWeekly();
   const N=D.dates.length,days=Math.min(10,N-260);
   $("dyDays").innerHTML=Array.from({length:Math.max(days,1)},(_,k)=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===dyK}">${new Date(D.dates[N-1-k]+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</button>`).join("");
   const T=snap(dyK),P=snap(dyK+1);
@@ -662,22 +780,47 @@ function openDetail(t){
     (r.st?ST_ORDER.filter(x=>r.st[x]).map(x=>{const v=r.st[x];return `<div style="grid-column:1/-1"><div class="k">${esc(SETUPS[x].n)} · pivot ${v.p.toFixed(2)} (${v.pd>0?"+":""}${v.pd}%)</div><div class="v" style="font:500 13.5px var(--f-body)">${esc(SETUPS[x].d(v))}</div></div>`}).join(""):"");
   {const pk=r.st&&ST_ORDER.find(x=>r.st[x]);$("dVcpLeg").hidden=!pk;if(pk)$("dVcpTxt").textContent=`${SETUPS[pk].n} pivot, across the pattern`}
   $("scrim").classList.add("open");document.body.style.overflow="hidden";
-  requestAnimationFrame(()=>{
-    const c=r.c;const m50=c.map((_,i)=>sma(c,50,i)),m200=c.map((_,i)=>sma(c,200,i));
-    const css=getComputedStyle(document.documentElement);const col=n=>css.getPropertyValue(n).trim();
-    const ser=[{d:c,c:col("--ink"),w:1.6},{d:m50,c:col("--warn"),w:1.2},{d:m200,c:col("--muted"),w:1.2}];
-    const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
-    if(pk){const v=r.st[pk];ser.push({d:c.map((_,i)=>i>=c.length-Math.max(v.bd,5)?v.p:null),c:col("--accent"),w:1,dash:true})}
-    const f=r.rs.find(v=>v!=null);
-    chart($("cPrice"),ser,col,false,{d:r.rs.map(v=>v==null?null:v/f*100),c:col("--rs"),nh:r.nh});
-    {const z=r.rs[r.rs.length-1];$("dRsNow").textContent=z&&f?`RS line ${z/f*100>=100?"+":""}${(z/f*100-100).toFixed(0)}% vs index over the chart${r.nh?", at a 52-week high":""}`:""}
-    volChart($("cVol"),c,r.v,col);
-    $("dVolNow").textContent=r.volx!=null?`Latest: ${r.volx.toFixed(1)}× its 50-day average`:"";
-  });
+  detailRow=r;
+  requestAnimationFrame(()=>drawDetail(r));
   $("dClose").focus();
 }
+let detailRow=null,chartTf="d",W=null,Wp=null;
+function loadWeekly(){return Wp??=fetch("weekly.json",{cache:"no-cache"}).then(x=>{if(!x.ok)throw new Error(x.status);return x.json()}).then(j=>W=j).catch(e=>{Wp=null;throw e})}
+async function drawDetail(r){
+  const css=getComputedStyle(document.documentElement);const col=n=>css.getPropertyValue(n).trim();
+  $("dTf").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===chartTf));
+  const pk=r.st&&ST_ORDER.find(x=>r.st[x]);
+  let c,v,dates,rs,ma1,ma2,volN,pivotSpan,nh=r.nh;
+  if(chartTf==="w"){
+    $("dTfNote").textContent="Loading weekly bars…";
+    try{await loadWeekly()}catch(e){$("dTfNote").textContent="Couldn't load the weekly data. Reload the page to try again.";return}
+    if(detailRow!==r||chartTf!=="w")return;      // user moved on while loading
+    const s=W.s[r.t],b=W.s.RSP.c;
+    if(!s){$("dTfNote").textContent="No weekly data for this stock.";return}
+    c=s.c;v=s.v;dates=W.weeks;ma1=c.map((_,i)=>sma(c,10,i));ma2=c.map((_,i)=>sma(c,40,i));volN=10;
+    rs=c.map((x,i)=>x!=null&&b[i]?x/b[i]:null);
+    const win=rs.slice(-52).filter(x=>x!=null);nh=win.length>1&&rs[rs.length-1]>=Math.max(...win)*0.995;
+    pivotSpan=pk?Math.max(1,Math.ceil(r.st[pk].bd/5)):0;
+    $("dTfNote").textContent=`${c.length} weeks, each bar one week${W.partial?"; the last bar is the current week so far":""}.`;
+    $("dMa1").textContent="10-week";$("dMa2").textContent="40-week";$("dVolAvg").textContent="10-week average volume";
+  }else{
+    c=r.c;v=r.v;dates=D.dates;rs=r.rs;ma1=c.map((_,i)=>sma(c,50,i));ma2=c.map((_,i)=>sma(c,200,i));volN=50;
+    pivotSpan=pk?Math.max(r.st[pk].bd,5):0;
+    $("dTfNote").textContent="";$("dMa1").textContent="50-day";$("dMa2").textContent="200-day";$("dVolAvg").textContent="50-day average volume";
+  }
+  const ser=[{d:c,c:col("--ink"),w:1.6},{d:ma1,c:col("--warn"),w:1.2},{d:ma2,c:col("--muted"),w:1.2}];
+  if(pk)ser.push({d:c.map((_,i)=>i>=c.length-pivotSpan?r.st[pk].p:null),c:col("--accent"),w:1,dash:true});
+  const f=rs.find(x=>x!=null);
+  chart($("cPrice"),ser,col,false,{d:rs.map(x=>x==null?null:x/f*100),c:col("--rs"),nh},dates);
+  {const z=rs[rs.length-1];$("dRsNow").textContent=z&&f?`RS line ${z/f*100>=100?"+":""}${(z/f*100-100).toFixed(0)}% vs index over the chart${nh?", at a 52-week high":""}`:""}
+  volChart($("cVol"),c,v,col,volN);
+  const vv=v.filter(x=>x!=null),last=vv[vv.length-1],avg=vv.slice(-volN-1,-1).reduce((a,b)=>a+b,0)/volN;
+  $("dVolNow").textContent=last&&avg?`Latest ${chartTf==="w"?"week":"day"}: ${(last/avg).toFixed(1)}× its ${volN}-${chartTf==="w"?"week":"day"} average`:"";
+}
+$("dTf").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartTf=b.dataset.v;drawDetail(detailRow)});
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
-function chart(cv,series,col,ref100,rs){
+function chart(cv,series,col,ref100,rs,dates){
+  dates=dates||D.dates;
   const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   const all=series.flatMap(s=>s.d).filter(v=>v!=null);let mn=Math.min(...all),mx=Math.max(...all);const pad=(mx-mn)*.06||1;mn-=pad;mx+=pad;
@@ -686,7 +829,7 @@ function chart(cv,series,col,ref100,rs){
   g.font="11px "+col("--f-mono");g.fillStyle=col("--muted");g.strokeStyle=col("--line");g.lineWidth=1;
   const step=nice((mx-mn)/4);for(let v=Math.ceil(mn/step)*step;v<=mx;v+=step){g.beginPath();g.moveTo(L,y(v));g.lineTo(W-R,y(v));g.stroke();g.textAlign="right";g.fillText(fmtN(v),L-6,y(v)+4)}
   if(ref100&&100>mn&&100<mx){g.setLineDash([4,4]);g.strokeStyle=col("--muted");g.beginPath();g.moveTo(L,y(100));g.lineTo(W-R,y(100));g.stroke();g.setLineDash([])}
-  g.textAlign="center";g.fillStyle=col("--muted");let lastM=-1;D.dates.forEach((d,i)=>{const m=+d.slice(5,7);if(m!==lastM&&i>0&&(m-1)%3===0){g.fillText(new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{month:"short",year:"2-digit"}),x(i),H-5)}lastM=m});
+  g.textAlign="center";g.fillStyle=col("--muted");let lastM=-1;dates.forEach((d,i)=>{const m=+d.slice(5,7);if(m!==lastM&&i>0&&(m-1)%3===0){g.fillText(new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{month:"short",year:"2-digit"}),x(i),H-5)}lastM=m});
   if(rs){ // RS line on its own scale in the lower 40% of the plot, under the price lines
     const vals=rs.d.filter(v=>v!=null);if(vals.length>1){
       const rmn=Math.min(...vals),rmx=Math.max(...vals),top=T+(H-T-B)*0.58,bot=H-B-4;
@@ -703,7 +846,7 @@ function chart(cv,series,col,ref100,rs){
     if(s.fill&&first!=null){g.lineTo(x(last),H-B);g.lineTo(x(first),H-B);g.closePath();g.globalAlpha=.1;g.fillStyle=s.c;g.fill();g.globalAlpha=1}
     if(last!=null){g.fillStyle=s.c;g.beginPath();g.arc(x(last),y(s.d[last]),3,0,7);g.fill()}});
 }
-function volChart(cv,c,v,col){
+function volChart(cv,c,v,col,avgN=50){
   const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   if(!v||!v.length)return;
@@ -713,7 +856,7 @@ function volChart(cv,c,v,col){
   g.fillText(fmtVol(mx*1000),L-6,T+9);
   for(let i=0;i<n;i++){if(!v[i])continue;g.fillStyle=i&&c[i]!=null&&c[i-1]!=null&&c[i]<c[i-1]?col("--down"):col("--up");g.globalAlpha=.55;const top=y(Math.min(v[i],mx));g.fillRect(x(i)-bw/2,top,bw,H-B-top)}
   g.globalAlpha=1;g.strokeStyle=col("--ink");g.lineWidth=1.2;g.beginPath();let st=false;
-  for(let i=50;i<n;i++){let s=0;for(let j=i-49;j<=i;j++)s+=v[j];const a=s/50;if(!st){g.moveTo(x(i),y(a));st=true}else g.lineTo(x(i),y(a))}
+  for(let i=avgN;i<n;i++){let s=0;for(let j=i-avgN+1;j<=i;j++)s+=v[j]||0;const a=s/avgN;if(!st){g.moveTo(x(i),y(a));st=true}else g.lineTo(x(i),y(a))}
   g.stroke();
 }
 function fmtVol(x){return x>=1e9?(x/1e9).toFixed(1)+"B":x>=1e6?(x/1e6).toFixed(0)+"M":x>=1e3?(x/1e3).toFixed(0)+"K":String(x)}

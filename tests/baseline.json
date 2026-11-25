@@ -1,0 +1,9 @@
+{
+  "_note": "Live site before the weekly features, data to 2026-11-24 (commit 5e9b7e3). Re-run tests/snapshot.js and compare; nothing here should change.",
+  "leaders": {"count": "268", "idx": "47", "nh": "23", "sector": "Health Care", "first": "MRNA", "f_nh": 23, "f_nearma": 2, "f_setup": 65},
+  "strategies": ["All setups 65", "VCP 22", "Cup with handle 19", "Cup, handle at 50-day 6", "Flat base 9", "High tight flag 0", "3-weeks-tight 5", "Pocket pivot 27"],
+  "scorecard": ["VCP 173 95 55% -10.2% -9.7% 33% -4.2% 65%", "Cup with handle 114 57 50% -5.7% -4.7% 39% -3.2% 53%", "Cup, handle at 50-day 159 39 25% -3.0% -2.2% 41% -1.6% 41%", "Flat base 162 76 47% -4.3% -3.3% 46% -2.5% 41%", "High tight flag 1 0 0% – – – – –", "3-weeks-tight 50 17 34% +1.7% +3.0% 71% +1.4% 18%"],
+  "scanners_daily": {"d0": "1,2,0,0,0,3,2,11", "d1": "27,0,0,1,1,1,1,9", "d2": "0,0,8,0,1,10,1,3", "d9": "5,2,0,0,0,0,7,91"},
+  "daily": "268 ; +9 / −11 ; 18 ; +0.54% ; 240",
+  "chartHeights": "330/110 330/110 330/110"
+}

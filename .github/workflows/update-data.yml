@@ -27,11 +27,13 @@ jobs:
           curl -sSfL -o data/constituents.csv https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv
       - name: Build data.json
         run: python scripts/build_data.py
+      - name: Build weekly.json
+        run: python scripts/build_weekly.py
       - name: Commit if changed
         run: |
-          if git diff --quiet data.json; then echo "No new prices"; exit 0; fi
+          if git diff --quiet data.json weekly.json; then echo "No new prices"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898+github-actions[bot]@users.noreply.github.com"
-          git add data.json
+          git add data.json weekly.json
           git commit -m "Update prices to $(python -c "import json;print(json.load(open('data.json'))['asOf'])")"
           git push
