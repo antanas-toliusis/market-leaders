@@ -98,6 +98,9 @@ th.tk{position:sticky;left:0;z-index:2}
 .empty{padding:28px 14px;color:var(--muted);text-align:center}
 .more{display:flex;justify-content:center;padding:12px}
 .btn{all:unset;cursor:pointer;font:500 13px var(--f-body);padding:7px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--accent)}
+.nearma{display:inline-flex;align-items:center;gap:4px}
+.nearma select{font:12.5px var(--f-body);padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 /* view tabs */
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
 .tabs a{padding:9px 14px;font:600 14px var(--f-display);color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:.01em}
@@ -120,7 +123,7 @@ th.tk{position:sticky;left:0;z-index:2}
 .sheet header{align-items:flex-start}
 .sheet h3{font:700 22px var(--f-display);margin:0}
 .close{all:unset;cursor:pointer;font:500 13px var(--f-body);padding:6px 10px;border:1px solid var(--line);border-radius:8px}
-.kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .kv div{background:var(--bg);border-radius:8px;padding:8px 10px}
 .kv .k{font-size:11.5px;color:var(--muted)}
 .kv .v{font:600 15px var(--f-mono)}
@@ -188,6 +191,7 @@ canvas{width:100%;display:block}
         <button type="button" class="chip" data-f="nh" aria-pressed="false">RS line at 52w high</button>
         <button type="button" class="chip" data-f="trend" aria-pressed="false">Uptrend (P &gt; 50d &gt; 200d)</button>
         <button type="button" class="chip" data-f="near" aria-pressed="false">Within 15% of 52w high</button>
+        <span class="nearma"><button type="button" class="chip" data-f="nearma" aria-pressed="false" title="Price at or just above the 21-day EMA, 50-day and 200-day averages">Near MAs</button><label for="maTol" class="sr">Maximum distance above each moving average</label><select id="maTol"><option value="0.02">≤2%</option><option value="0.03" selected>≤3%</option><option value="0.05">≤5%</option><option value="0.08">≤8%</option></select></span>
       </div>
       <input type="search" id="q" placeholder="Search ticker or name" aria-label="Search ticker or company name">
     </div>
@@ -241,6 +245,7 @@ canvas{width:100%;display:block}
     <b>RS 12M weighted</b> follows the IBD convention: 40% weight on the latest quarter and 20% on each of the three before it.
     <b>RS rating</b> is that weighted score's percentile among all S&amp;P 500 members (1–99); the index's own rating is shown in the summary, and only stocks above it are listed.
     The <b>RS line</b> is stock price ÷ index price; a rising line means the stock is outperforming.
+    <b>Near MAs</b> keeps stocks closing at or just above all three of the 21-day EMA, 50-day and 200-day averages, by no more than the % you pick.
     Data: point-in-time S&amp;P 500 dataset (github.com/Johnbrick123/sp500-data, built from Yahoo Finance and cross-checked against Nasdaq), sector labels from the GICS list. This is a screen, not investment advice.
   </p>
 </div>
@@ -262,7 +267,7 @@ canvas{width:100%;display:block}
 <script>
 (function(){
 let D=null, bench="SPY", lb="w", sortK="rating", sortDir=-1, sector=null, showAll=false;
-const F={rs80:false,nh:false,trend:false,near:false};
+const F={rs80:false,nh:false,trend:false,near:false,nearma:false};
 const $=id=>document.getElementById(id);
 const pct=(v,d=1)=>v==null||!isFinite(v)?"–":(v>0?"+":"")+(v*100).toFixed(d)+"%";
 const cls=v=>v==null?"":v>=0?"pos":"neg";
@@ -272,6 +277,7 @@ const LB={w:"RS 12M weighted",21:"1 month",63:"3 months",126:"6 months",252:"12 
 function ret(c,n){const L=c.length-1;if(L-n<0)return null;const a=c[L-n],b=c[L];return a&&b?b/a-1:null}
 function seg(c,from,to){const L=c.length-1;const a=c[L-from],b=c[L-to];return a&&b?b/a-1:null}
 function wscore(c){const q=[seg(c,63,0),seg(c,126,63),seg(c,189,126),seg(c,252,189)];if(q.some(v=>v==null))return null;return .4*q[0]+.2*q[1]+.2*q[2]+.2*q[3]}
+function ema(c,n){const k=2/(n+1);let e=null;const s=c.slice(-120);for(const v of s){if(v==null)continue;e=e==null?v:v*k+e*(1-k)}return e}
 function sma(c,n,end){end=end??c.length-1;if(end-n+1<0)return null;let s=0;for(let i=end-n+1;i<=end;i++){if(c[i]==null)return null;s+=c[i]}return s/n}
 
 function compute(k=0){
@@ -293,7 +299,9 @@ function compute(k=0){
     const nh=rsMax!=null&&rs[L]!=null&&rs[L]>=rsMax*0.995;
     const pw=c.slice(-252).filter(v=>v!=null);const hi52=pw.length?Math.max(...pw):null;
     const off=hi52&&c[L]?c[L]/hi52-1:null;
-    const s50=sma(c,50),s200=sma(c,200);
+    const s50=sma(c,50),s200=sma(c,200),e21=ema(c,21);
+    const maGap=s50&&s200&&e21&&c[L]?Math.max(c[L]/e21,c[L]/s50,c[L]/s200)-1:null;
+    const maMin=s50&&s200&&e21&&c[L]?Math.min(c[L]/e21,c[L]/s50,c[L]/s200)-1:null;
     const trendScore=s50==null||s200==null?0:(c[L]>s50?1:0)+(s50>s200?1:0)+(c[L]>s200?1:0);
     const rs126=rs.slice(-126);const a=rs126.find(v=>v!=null);const z=rs126[rs126.length-1];
     const rsTrend=a&&z?z/a-1:null;
@@ -301,7 +309,7 @@ function compute(k=0){
     let beats;
     if(lb==="w")beats=w!=null&&bw!=null&&w>bw;else beats=r["rel"+lb]!=null&&r["rel"+lb]>0;
     const day=c[L]&&c[L-1]?c[L]/c[L-1]-1:null;
-    return {...s,...r,w,rating:rankOf(w),rs,nh,off,s50,s200,trendScore,rsTrend,beats,price:c[L],day};
+    return {...s,...r,w,rating:rankOf(w),rs,nh,off,s50,s200,trendScore,rsTrend,beats,price:c[L],day,e21,maGap,maMin};
   });
   const bday=b[b.length-1]/b[b.length-2]-1;
   return {rows,bw,benchRating,br,bday};
@@ -330,7 +338,7 @@ function render(){
 
 function renderTable(){
   const q=$("q").value.trim().toLowerCase();
-  let rows=C.rows.filter(r=>r.beats&&(!sector||r.s===sector)&&(!F.rs80||(r.rating??0)>=80)&&(!F.nh||r.nh)&&(!F.trend||r.trendScore===3)&&(!F.near||(r.off!=null&&r.off>=-0.15))&&(!q||r.t.toLowerCase().includes(q)||r.n.toLowerCase().includes(q)));
+  let rows=C.rows.filter(r=>r.beats&&(!sector||r.s===sector)&&(!F.rs80||(r.rating??0)>=80)&&(!F.nh||r.nh)&&(!F.trend||r.trendScore===3)&&(!F.near||(r.off!=null&&r.off>=-0.15))&&(!F.nearma||(r.maMin!=null&&r.maMin>=0&&r.maGap<=+$("maTol").value))&&(!q||r.t.toLowerCase().includes(q)||r.n.toLowerCase().includes(q)));
   const key=sortK==="rating"?(lb==="w"?"w":"rel"+lb):sortK;
   rows.sort((a,b)=>{let x=a[key],y=b[key];if(x==null)return 1;if(y==null)return -1;return typeof x==="string"?sortDir*x.localeCompare(y):sortDir*(x-y)});
   // rank by primary metric
@@ -426,7 +434,7 @@ function openDetail(t){
   const r=C.rows.find(x=>x.t===t);if(!r)return;
   $("dTitle").textContent=`${r.t} · ${r.n}`;
   $("dSub").textContent=`${r.s} · ${r.i} · last close ${r.price?.toFixed(2)}`;
-  const k=[["RS rating",r.rating??"–"],["vs index 3M",pct(r.rel63)],["vs index 6M",pct(r.rel126)],["vs index 12M",pct(r.rel252)],["From 52w high",pct(r.off)],["RS line 52w high",r.nh?"Yes":"No"],["50-day avg",r.s50?.toFixed(2)??"–"],["200-day avg",r.s200?.toFixed(2)??"–"]];
+  const k=[["RS rating",r.rating??"–"],["vs index 3M",pct(r.rel63)],["vs index 6M",pct(r.rel126)],["vs index 12M",pct(r.rel252)],["From 52w high",pct(r.off)],["RS line 52w high",r.nh?"Yes":"No"],["21-day EMA",r.e21?.toFixed(2)??"–"],["50-day avg",r.s50?.toFixed(2)??"–"],["200-day avg",r.s200?.toFixed(2)??"–"]];
   $("dKv").innerHTML=k.map(([a,b])=>`<div><div class="k">${a}</div><div class="v">${b}</div></div>`).join("");
   $("scrim").classList.add("open");document.body.style.overflow="hidden";
   requestAnimationFrame(()=>{
@@ -461,6 +469,7 @@ segBind("benchSeg",v=>{bench=v;render()});
 segBind("lbSeg",v=>{lb=v;sortK="rating";sortDir=-1;render()});
 $("filters").addEventListener("click",e=>{const b=e.target.closest("button[data-f]");if(!b)return;F[b.dataset.f]=!F[b.dataset.f];b.setAttribute("aria-pressed",F[b.dataset.f]);renderTable()});
 $("q").addEventListener("input",renderTable);
+$("maTol").addEventListener("change",()=>{if(!F.nearma){F.nearma=true;document.querySelector('[data-f="nearma"]').setAttribute("aria-pressed","true")}renderTable()});
 const pickSec=el=>{const s=el.dataset.s;sector=sector===s?null:s;render()};
 $("sectors").addEventListener("click",e=>{const el=e.target.closest(".sbar");if(el)pickSec(el)});
 $("sectors").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){const el=e.target.closest(".sbar");if(el){e.preventDefault();pickSec(el)}}});
