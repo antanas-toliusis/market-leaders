@@ -85,6 +85,8 @@ def rnd(a):
         o.append(None if v is None else float(f"{v:.5g}"))
     return o
 for b in bench: out['bench'][b]=rnd(ser[b])
+# benchmark volume (thousands of shares) for the index chart
+out['benchv']={b:[int(float(f'{x/1000:.3g}')) if x else 0 for x in vo[b]] for b in bench}
 counts={};events=[];episodes={}
 for t in members:
     s=ser[t]

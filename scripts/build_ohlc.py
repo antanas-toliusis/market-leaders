@@ -10,7 +10,7 @@ import duckdb, json, os
 daily = json.load(open('data.json'))
 dates = daily['dates']
 idx = {d: i for i, d in enumerate(dates)}
-tick = [s['t'] for s in daily['stocks']]
+tick = [s['t'] for s in daily['stocks']] + list(daily['bench'])   # benchmarks too, for the index chart
 rows = duckdb.sql(f"""select ticker, strftime(date, '%Y-%m-%d'), adj_close, open, high, low, close
                       from 'data/prices.parquet'
                       where date >= '{dates[0]}' and date <= '{dates[-1]}'
