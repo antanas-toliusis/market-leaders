@@ -81,6 +81,11 @@ for t in members:
         rec['md']=[str(dates[i].date()) for i in range(src_last[t]+1,len(dates)) if s[i] is None]   # sessions no source had
         print('missing',t,rec['md'])
     if t in filled: rec['gf']=sorted(filled[t])
+    # NR7: sessions in the last 10 whose high-low range is the narrowest of the 7 sessions ending there
+    rg=[(x-y) if x is not None and y is not None else None for x,y in zip(hi[t],lo[t])]
+    nr=[str(dates[j].date()) for j in range(len(dates)-10,len(dates))
+        if rg[j] is not None and None not in rg[j-6:j] and rg[j]<min(rg[j-6:j]) and (src_last[t] is None or j<=src_last[t] or t in filled)]
+    if nr: rec['nr']=nr
     H=[x if x is not None else y for x,y in zip(hi[t],s)]; Lw=[x if x is not None else y for x,y in zip(lo[t],s)]
     st=scan(s,H,Lw,vo[t],out['dates']) if None not in s[-230:] else {}
     if st: rec['st']=st

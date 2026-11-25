@@ -270,7 +270,7 @@ canvas{width:100%;display:block}
     <section class="panel">
       <div class="ph"><h2 id="scListTitle">Results</h2><span class="hint">Tap a column to sort, a stock for its chart.</span></div>
       <div class="tblwrap"><table>
-        <thead><tr id="scHead"><th class="l tk" data-k="t">Stock</th><th class="l" data-k="s">Sector</th><th data-k="px">Price</th><th data-k="chg">Chg %</th><th data-k="vol">Vol</th><th data-k="a10">Avg vol 10D</th><th data-k="rv" title="Volume ÷ 10-day average volume">Rel vol</th><th data-k="rating">RS rating</th><th class="l" data-k="lead">Leader</th><th class="l">Setups</th></tr></thead>
+        <thead><tr id="scHead"><th class="l tk" data-k="t">Stock</th><th class="l" data-k="s">Sector</th><th data-k="px">Price</th><th data-k="chg">Chg %</th><th data-k="vol">Vol</th><th data-k="a10">Avg vol 10D</th><th data-k="rv" title="Volume ÷ 10-day average volume">Rel vol</th><th data-k="rating">RS rating</th><th class="l" data-k="lead">Leader</th><th class="l">Signal</th><th class="l">Setups</th></tr></thead>
         <tbody id="scTb2"></tbody></table></div>
       <div class="empty" id="scEmpty" hidden>No S&amp;P 500 stock matched this scanner on that day. Try another day.</div>
     </section>
@@ -503,16 +503,37 @@ $("viewStrat").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.tar
 // scanners: each test gets one stock's figures for the chosen session
 const SCANNERS=[
   {id:"powerbar",n:"Power Bar on Volume",s:"Up 10% or more on the day on 4M+ shares (market cap over $1B, which every S&P 500 member meets)",
-   test:x=>x.chg>=0.10&&x.vol>=4e6},
+   test:x=>x.chg>=0.10&&x.vol>=4e6,d:x=>`${pct(x.chg,1)} on ${(x.vol/1e6).toFixed(1)}M shares`},
+  {id:"new52",n:"New 52-week high on volume",s:"Closes at a new 52-week closing high on 1.5× or more its 50-day average volume",
+   test:x=>x.hi52c!=null&&x.px>x.hi52c&&x.rv50>=1.5,d:x=>`new high, ${x.rv50.toFixed(1)}× 50-day volume`},
+  {id:"rsfirst",n:"RS line new high, price not yet",s:"RS line at a 52-week high while the price is still 5% or more below its own 52-week high",
+   test:x=>x.rsNH&&x.offHi<=-0.05,d:x=>`RS line at a high, price ${pct(x.offHi,1)} from its high`},
+  {id:"quietpb",n:"Quiet pullback to the 50-day",s:"A leader within 2% of a rising 50-day on half its average volume or less",
+   test:x=>x.lead&&x.d50!=null&&Math.abs(x.d50)<=0.02&&x.rv50<=0.5&&x.s50up,d:x=>`${pct(x.d50,1)} vs 50-day, volume ${x.rv50.toFixed(2)}×`},
+  {id:"ep",n:"Episodic pivot",s:"Up 8% or more on 3× or more its 50-day average volume, usually news or earnings",
+   test:x=>x.chg>=0.08&&x.rv50>=3,d:x=>`${pct(x.chg,1)} on ${x.rv50.toFixed(1)}× 50-day volume`},
+  {id:"dist",n:"Distribution day in a leader",s:"A leader down 4% or more on 2× or more its 50-day average volume: a warning",
+   test:x=>x.lead&&x.chg<=-0.04&&x.rv50>=2,d:x=>`${pct(x.chg,1)} on ${x.rv50.toFixed(1)}× 50-day volume`},
+  {id:"burst",n:"Momentum burst",s:"Up 25% or more over 20 sessions, with volume over that stretch above the 50 sessions before it",
+   test:x=>x.g20>=0.25&&x.vbr>=1.2,d:x=>`${pct(x.g20,0)} in 20 sessions, volume ${x.vbr.toFixed(1)}× prior`},
+  {id:"nr7",n:"Tight day (NR7) in a leader",s:"The narrowest daily range of the last 7 sessions, in a leader above its 50-day and within 15% of its high",
+   test:x=>x.nr7&&x.lead&&x.d50!=null&&x.d50>0&&x.offHi>=-0.15,d:x=>`narrowest range in 7 days, ${pct(x.offHi,1)} from high`},
 ];
 let scId="powerbar",scK=0,scSort="chg",scDir=-1;
 function scanRows(k){
-  const N=D.dates.length,j=N-1-k,rows=[],byT=new Map(C.rows.map(r=>[r.t,r]));
+  const N=D.dates.length,j=N-1-k,rows=[],byT=new Map(snap(k).rows.map(r=>[r.t,r])),b=D.bench[bench],day=D.dates[j];
+  const mx=(a,from,to)=>{let m=-Infinity;for(let i=Math.max(0,from);i<=to;i++)if(a[i]!=null&&a[i]>m)m=a[i];return m===-Infinity?null:m};
+  const avg=(a,from,to)=>{let s=0,n=0;for(let i=Math.max(0,from);i<=to;i++)if(a[i]){s+=a[i];n++}return n?s/n:null};
   for(const s of D.stocks){const c=s.c,v=s.v||[];if(c[j]==null||c[j-1]==null||!v[j])continue;
     if(s.md&&(s.md.includes(D.dates[j])||s.md.includes(D.dates[j-1])))continue; // skip carried-over prices
     let a=0,n=0;for(let i=j-10;i<j;i++)if(v[i]){a+=v[i];n++}
     const r=byT.get(s.t)||{};
-    rows.push({t:s.t,n:s.n,s:s.s,px:c[j],chg:c[j]/c[j-1]-1,vol:v[j]*1000,a10:n?a/n*1000:null,rv:n?v[j]/(a/n):null,rating:r.rating,lead:r.beats?1:0,st:r.st,c,j});
+    const a50=avg(v,j-50,j-1),hi52c=mx(c,j-251,j-1),hi52=mx(c,j-251,j),s50=sma(c,50,j),s50p=sma(c,50,j-20);
+    const rsj=b[j]?c[j]/b[j]:null,rsArr=c.map((x,i)=>x!=null&&b[i]?x/b[i]:null),rsHi=mx(rsArr,j-251,j-1);
+    rows.push({t:s.t,n:s.n,s:s.s,px:c[j],chg:c[j]/c[j-1]-1,vol:v[j]*1000,a10:n?a/n*1000:null,rv:n?v[j]/(a/n):null,rating:r.rating,lead:r.beats?1:0,st:k?null:r.st,
+      rv50:a50?v[j]/a50:null,hi52c,offHi:hi52?c[j]/hi52-1:null,rsNH:rsj!=null&&rsHi!=null&&rsj>=rsHi*0.995,
+      d50:s50?c[j]/s50-1:null,s50up:s50!=null&&s50p!=null&&s50>s50p,g20:c[j-20]?c[j]/c[j-20]-1:null,
+      vbr:(()=>{const x=avg(v,j-19,j),y=avg(v,j-69,j-20);return x&&y?x/y:null})(),nr7:!!(s.nr&&s.nr.includes(day))});
   }
   return rows;
 }
@@ -520,17 +541,17 @@ function renderScan(){
   const N=D.dates.length;
   $("scDays").innerHTML=Array.from({length:10},(_,k)=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===scK}">${new Date(D.dates[N-1-k]+"T12:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</button>`).join("");
   const all=scanRows(scK);
-  $("scNote").textContent=`Scans every S&P 500 member on the close of ${fmtDate(D.dates[N-1-scK])}. Pick a day above to see past sessions. Stocks outside the S&P 500 are not covered.`;
-  $("scCards").innerHTML=SCANNERS.map(S=>{const c=all.filter(S.test).length;return `<button type="button" class="scard" data-id="${S.id}" aria-pressed="${S.id===scId}"><span class="top"><b>${esc(S.n)}</b><span class="num${c?"":" zero"}">${c}</span></span><p>${esc(S.s)}</p></button>`}).join("");
+  $("scNote").textContent=`Scans every S&P 500 member on the close of ${fmtDate(D.dates[N-1-scK])}. Pick a day above to see past sessions; leader status and RS rating are as of that day. Stocks outside the S&P 500 are not covered.`;
+  $("scCards").innerHTML=SCANNERS.map(S=>{const c=all.filter(x=>{try{return S.test(x)}catch(e){return false}}).length;return `<button type="button" class="scard" data-id="${S.id}" aria-pressed="${S.id===scId}"><span class="top"><b>${esc(S.n)}</b><span class="num${c?"":" zero"}">${c}</span></span><p>${esc(S.s)}</p></button>`}).join("");
   const S=SCANNERS.find(x=>x.id===scId);
-  const list=all.filter(S.test).sort((a,b)=>{let x=a[scSort],y=b[scSort];if(x==null)return 1;if(y==null)return -1;return typeof x==="string"?scDir*x.localeCompare(y):scDir*(x-y)});
+  const list=all.filter(x=>{try{return S.test(x)}catch(e){return false}}).sort((a,b)=>{let x=a[scSort],y=b[scSort];if(x==null)return 1;if(y==null)return -1;return typeof x==="string"?scDir*x.localeCompare(y):scDir*(x-y)});
   $("scListTitle").textContent=`${S.n}: ${list.length} stock${list.length===1?"":"s"}`;
   $("scEmpty").hidden=list.length>0;
   const vf=x=>x==null?"–":x>=1e9?(x/1e9).toFixed(2)+"B":x>=1e6?(x/1e6).toFixed(2)+"M":(x/1e3).toFixed(0)+"K";
   $("scTb2").innerHTML=list.map(x=>`<tr tabindex="0" data-t="${esc(x.t)}"><td class="tk"><b>${esc(x.t)}</b><span>${esc(x.n)}</span></td><td class="l sec">${esc(x.s)}</td>
     <td>${x.px.toFixed(2)}</td><td class="${cls(x.chg)}">${pct(x.chg,2)}</td><td>${vf(x.vol)}</td><td>${vf(x.a10)}</td>
     <td${x.rv>=2?' class="pos" style="font-weight:600"':""}>${x.rv==null?"–":x.rv.toFixed(2)}</td><td>${x.rating!=null?ratingCell(x):"–"}</td>
-    <td class="l">${x.lead?'<span class="pill up">Leader</span>':'<span class="pill mid">No</span>'}</td><td class="l">${badges(x)}</td></tr>`).join("");
+    <td class="l">${x.lead?'<span class="pill up">Leader</span>':'<span class="pill mid">No</span>'}</td><td class="l det">${esc(S.d(x))}</td><td class="l">${badges(x)}</td></tr>`).join("");
   document.querySelectorAll("#scHead th[data-k]").forEach(th=>{if(th.dataset.k===scSort)th.setAttribute("aria-sort",scDir<0?"descending":"ascending");else th.removeAttribute("aria-sort")});
 }
 $("scDays").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;scK=+b.dataset.k;renderScan()});
