@@ -55,10 +55,15 @@ for t in members:
 spy=out['bench']['SPY']
 for e in events:
     e['sp']=round((spy[-1]/spy[e.pop('bi')]-1)*100,1)
-seen={}
-for e in sorted(events,key=lambda e:e['fs']):   # one breakout per stock, setup and day
-    seen.setdefault((e['t'],e['k'],e['bd']),e)
-events=list(seen.values())
+# One breakout per stock and setup per base: drop a later breakout through a pivot
+# within 2% of an earlier one (the same base re-crossed), and same-day duplicates.
+kept=[]
+for e in sorted(events,key=lambda e:(e['bd'],e['fs'])):
+    if any(k['t']==e['t'] and k['k']==e['k'] and (k['bd']==e['bd'] or abs(k['p']/e['p']-1)<=0.02) for k in kept):
+        continue
+    kept.append(e)
+print('breakouts before/after de-duplication',len(events),len(kept))
+events=kept
 events.sort(key=lambda e:(e['bd'],e['t']),reverse=True)
 out['bo']=events
 out['ep']=episodes          # setup episodes started in the replay window

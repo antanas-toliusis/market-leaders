@@ -249,7 +249,7 @@ canvas{width:100%;display:block}
     <section class="panel">
       <div class="ph"><h2>Setup scorecard</h2><div class="filters"><span class="hint" id="scHint"></span><div class="seg" id="scSeg" role="group" aria-label="Which breakouts to score"><button type="button" data-v="all" aria-pressed="true">All breakouts</button><button type="button" data-v="vol" aria-pressed="false">Volume-confirmed (≥1.4×)</button></div></div></div>
       <div class="tblwrap"><table>
-        <thead><tr><th class="l">Setup</th><th title="Separate setup episodes found in the window">Signals</th><th title="Closed above the pivot within 20 sessions of the last signal (with the volume switch on, only on 1.4× average volume or more)">Broke out</th><th>Breakout rate</th><th title="Average change from breakout-day close to the latest close">Avg since breakout</th><th title="Average change minus the S&amp;P 500 over the same days">Avg vs S&amp;P 500</th><th>Still above pivot</th><th title="Closed more than 8% under the pivot after breaking out">Failed (−8% stop)</th></tr></thead>
+        <thead><tr><th class="l">Setup</th><th title="Separate setup episodes found in the window">Signals</th><th title="Closed above the pivot within 20 sessions of the last signal (with the volume switch on, only on 1.4× average volume or more)">Broke out</th><th>Breakout rate</th><th title="Average change from breakout-day close to the latest close">Avg since breakout</th><th title="Average change minus the S&amp;P 500 over the same days">Avg vs S&amp;P 500</th><th>Still above pivot</th><th title="Average result if bought at the breakout-day close and sold at the first close more than 8% lower; otherwise held to the latest close">Avg with −8% stop</th><th title="Closed more than 8% under the breakout-day close">Stopped out</th></tr></thead>
         <tbody id="scTb"></tbody></table></div>
       <div class="note">Each day in the window was scanned using only the data available that day. Pocket pivots are entry days rather than bases, so they are not scored. Past results in one market spell say little about the next.</div>
     </section>
@@ -493,7 +493,7 @@ $("viewStrat").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.tar
 
 // breakouts from setups
 let boW=60,boVol=false,scVol=false;const VOLX=1.4;
-const STATUS={holding:'<span class="pill up">Above pivot</span>',below:'<span class="pill mid">Back under pivot</span>',failed:'<span class="pill dn">Failed (−8%)</span>'};
+const STATUS={holding:'<span class="pill up">Above pivot</span>',below:'<span class="pill mid">Back under pivot</span>',failed:'<span class="pill dn" title="Closed more than 8% under the breakout-day close">Stopped out (−8%)</span>'};
 function boGroups(){
   const by=new Map();
   for(const e of D.bo||[]){const key=e.t+"|"+e.bd;if(!by.has(key))by.set(key,{...e,ks:[]});by.get(key).ks.push(e.k)}
@@ -503,11 +503,11 @@ function renderBreakouts(){
   const N=D.dates.length,from=D.dates[Math.max(0,N-boW)];
   const rows=boGroups().filter(e=>e.bd>=from&&(!boVol||(e.bv??0)>=VOLX)).sort((a,b)=>b.bd.localeCompare(a.bd)||b.g-a.g);
   const byT=new Map(D.stocks.map(s=>[s.t,s]));
-  $("boNote").textContent=`Stocks that closed above the pivot of a setup they had been flagged in (VCP, cup with handle, cup at the 50-day, flat base, high tight flag, 3-weeks-tight). ${rows.length}${boVol?" volume-confirmed":""} breakout${rows.length===1?"":"s"} since ${fmtDate(from)}. Gains run from the breakout-day close to the close of ${fmtDate(D.asOf)}.`;
+  $("boNote").textContent=`Stocks that closed above the pivot of a setup they had been flagged in (VCP, cup with handle, cup at the 50-day, flat base, high tight flag, 3-weeks-tight). ${rows.length}${boVol?" volume-confirmed":""} breakout${rows.length===1?"":"s"} since ${fmtDate(from)}. Gains run from the breakout-day close to the close of ${fmtDate(D.asOf)}. A * marks a setup first flagged when the price was already just above its pivot, so the entry is that day's close.`;
   $("boEmpty").hidden=rows.length>0;
   $("boTb").innerHTML=rows.map(e=>{const s=byT.get(e.t)||{n:""};
     const bv=e.bv==null?"–":`<span${e.bv>=1.4?' class="pos" style="font-weight:600"':""}>${e.bv.toFixed(1)}×</span>`;
-    return `<tr tabindex="0" data-t="${esc(e.t)}"><td class="l">${fmtDate(e.bd)}</td><td class="tk"><b>${esc(e.t)}</b><span>${esc(s.n)}</span></td>
+    return `<tr tabindex="0" data-t="${esc(e.t)}"><td class="l">${fmtDate(e.bd)}${e.late?' <span title="First flagged when already above the pivot: entry is that day&#39;s close">*</span>':""}</td><td class="tk"><b>${esc(e.t)}</b><span>${esc(s.n)}</span></td>
     <td class="l">${e.ks.map(k=>`<span class="pill st">${SETUPS[k].b}</span>`).join(" ")}</td><td>${e.p.toFixed(2)}</td><td>${bv}</td>
     <td class="${e.g?cls(e.g):""}">${e.g>0?"+":""}${e.g}%</td><td class="${e.mg>0?"pos":""}">${e.mg>0?"+":""}${e.mg}%</td><td class="${e.sp?cls(e.sp):""}">${e.sp>0?"+":""}${e.sp}%</td><td class="l">${STATUS[e.st]}</td></tr>`}).join("");
 }
@@ -524,7 +524,7 @@ function renderScorecard(){
   $("scTb").innerHTML=ST_ORDER.filter(k=>k!=="pp").map(k=>{const e=ev.filter(x=>x.k===k),n=ep[k]||0;
     const pct=x=>e.length?Math.round(x/e.length*100)+"%":"–";
     return `<tr><td class="l"><b style="font-family:var(--f-body)">${esc(SETUPS[k].n)}</b></td><td>${n}</td><td>${e.length}</td><td>${n?Math.round(e.length/n*100)+"%":"–"}</td>
-      <td>${f(avg(e.map(x=>x.g)))}</td><td>${f(avg(e.map(x=>x.g-x.sp)))}</td><td>${pct(e.filter(x=>x.st==="holding").length)}</td><td>${pct(e.filter(x=>x.st==="failed").length)}</td></tr>`}).join("");
+      <td>${f(avg(e.map(x=>x.g)))}</td><td>${f(avg(e.map(x=>x.g-x.sp)))}</td><td>${pct(e.filter(x=>x.st==="holding").length)}</td><td>${f(avg(e.map(x=>x.r)))}</td><td>${pct(e.filter(x=>x.st==="failed").length)}</td></tr>`}).join("");
 }
 
 // daily update
