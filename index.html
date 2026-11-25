@@ -141,7 +141,7 @@ th.tk{position:sticky;left:0;z-index:2}
 .sheet header{align-items:flex-start}
 .sheet h3{font:700 22px var(--f-display);margin:0}
 .close{all:unset;cursor:pointer;font:500 13px var(--f-body);padding:6px 10px;border:1px solid var(--line);border-radius:8px}
-.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
 .kv div{background:var(--bg);border-radius:8px;padding:8px 10px}
 .kv .k{font-size:11.5px;color:var(--muted)}
 .kv .v{font:600 15px var(--f-mono)}
@@ -327,7 +327,7 @@ canvas{width:100%;display:block}
     </header>
     <div class="kv" id="dKv"></div>
     <div class="legend"><span><i style="background:var(--ink)"></i>Price</span><span><i style="background:var(--warn)"></i>50-day</span><span><i style="background:var(--muted)"></i>200-day</span><span id="dVcpLeg" hidden><i style="background:var(--accent)"></i><span id="dVcpTxt">Pivot</span></span><span title="Stock price divided by the index, drawn on its own scale along the lower part of the chart. Rising means the stock is beating the index."><i style="background:var(--rs)"></i>RS line vs index (own scale)</span><span id="dRsNow"></span></div>
-    <canvas id="cPrice" height="360"></canvas>
+    <canvas id="cPrice" height="330"></canvas>
     <div class="legend"><span><i style="background:var(--up)"></i>Volume, up day</span><span><i style="background:var(--down)"></i>down day</span><span><i style="background:var(--ink)"></i>50-day average volume</span><span id="dVolNow"></span></div>
     <canvas id="cVol" height="110"></canvas>
   </div>
