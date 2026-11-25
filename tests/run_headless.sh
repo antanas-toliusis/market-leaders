@@ -6,6 +6,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 cp "$ROOT/index.html" "$ROOT/data.json" "$ROOT/weekly.json" "$TMP/"
+[ -f "$ROOT/ohlc.json" ] && cp "$ROOT/ohlc.json" "$TMP/"
 python3 - "$TMP/index.html" "$ROOT/tests/headless_probe.js" <<'EOF'
 import sys
 page, probe = sys.argv[1], open(sys.argv[2]).read()
