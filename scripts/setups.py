@@ -21,7 +21,8 @@ def _pd(c, p):
 
 
 def _uptrend(close):
-    """Price above a rising 200-day and above the 50-day: the minimum for any base."""
+    """Price above a rising 200-day, with the 50-day above the 200-day: the minimum for
+    any base (the close may dip under the 50-day, e.g. a handle resting on it)."""
     s50, s200 = _sma(close, 50), _sma(close, 200)
     s200_prev = _sma(close, 200, len(close) - 20)
     return s50 and s200 and s200_prev and close[-1] > s200 and s50 > s200 and s200 >= s200_prev
@@ -120,7 +121,8 @@ def cup_handle_at_ma(close, high, low, vol, dates=None):
 
 def flat_base(close, high, low, vol, dates=None):
     """At least 5 weeks moving sideways in a range no deeper than 15%, after an advance
-    of 20%+, with the close within 5% of the top of the range."""
+    of 20%+, with the close within 5% either side of the top of the range (excluding
+    today's bar)."""
     n = len(close)
     if n < 230 or not _uptrend(close):
         return None
@@ -138,15 +140,17 @@ def flat_base(close, high, low, vol, dates=None):
     prior_low = min(low[max(0, start - 63):start]) if start > 0 else None
     if not prior_low or close[start] < prior_low * 1.20:
         return None
-    pivot = hi
-    if c < pivot * 0.95:
+    # pivot: the top of the range before today, so a stock breaking out today shows
+    # above its pivot rather than under its own intraday high
+    pivot = max(high[start:n - 1]) if length > 1 else hi
+    if not (pivot * 0.95 <= c <= pivot * 1.05):
         return None
     return {'p': round(pivot, 2), 'pd': _pd(c, pivot), 'bd': length,
             'dp': round((hi - lo) / hi * 100, 1), 'w': round(length / 5, 1)}
 
 
 def high_tight_flag(close, high, low, vol, dates=None):
-    """Price roughly doubles (90%+) in 4-8 weeks, then a flag of 2-5 weeks that pulls
+    """Price roughly doubles (90%+) in 3-8 weeks, then a flag of 2-5 weeks that pulls
     back no more than 25% and holds within 15% of the peak."""
     n = len(close)
     if n < 60:

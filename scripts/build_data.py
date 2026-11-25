@@ -29,19 +29,28 @@ src_last={t:max((i for i,v in enumerate(ser[t]) if v is not None),default=None) 
 stale=[t for t in members if src_last[t] is not None and src_last[t]<len(dates)-1]
 filled={}
 def _put(t,i,cl,hh,ll,vv,ratio):
-    ser[t][i]=cl*ratio; hi[t][i]=hh*ratio; lo[t][i]=ll*ratio; vo[t][i]=int(vv or 0)
+    ser[t][i]=cl*ratio; hi[t][i]=hh*ratio; lo[t][i]=ll*ratio; vo[t][i]=int((vv or 0)/ratio)   # shares on the same scale
     filled.setdefault(t,[]).append(str(dates[i].date()))
+# The backup sources split-adjust their whole history, while the source's last rows may
+# predate a split (that is often why it lags). So each backup is put on the source's scale
+# by matching its close on the source's last session: a split shows as no jump at all,
+# and a backup without that overlap session is not used.
+def _scale(t,closes):
+    k=src_last[t]; b=closes.get(k)
+    return ser[t][k]/b if b else None
 for t in stale:
-    r=c.sql(f"select adj_close/close from 'data/prices.parquet' where ticker='{t}' and close>0 order by date desc limit 1").fetchall()
-    r=r[0] if r else None
-    ratio=r[0] if r and r[0] else 1.0          # continue the source's adjusted scale
-    start,end=dates[src_last[t]+1].date(),dates[-1].date()
+    start,end=dates[src_last[t]].date(),dates[-1].date()     # from the overlap session
     try:
         import yfinance as yf
         df=yf.download(t,start=str(start),end=str(end+_dt.timedelta(days=1)),auto_adjust=False,progress=False,actions=False,multi_level_index=False)
+        got={}
         for d_,row in (df.iterrows() if df is not None else []):
             i=idx.get(d_.to_pydatetime().replace(tzinfo=None))
-            if i is not None and ser[t][i] is None and row['Close']==row['Close']:
+            if i is not None and row['Close']==row['Close']: got[i]=row
+        ratio=_scale(t,{i:float(r_['Close']) for i,r_ in got.items()})
+        if ratio is None and got: print('gap fill (yahoo): no overlap session to scale',t)
+        for i,row in got.items():
+            if ratio and ser[t][i] is None:
                 _put(t,i,float(row['Close']),float(row['High']),float(row['Low']),row['Volume'],ratio)
     except Exception as e:
         print('gap fill (yahoo) failed:',t,type(e).__name__,e)
@@ -50,10 +59,15 @@ for t in stale:
             url=f"https://stooq.com/q/d/l/?s={t.lower()}.us&d1={start:%Y%m%d}&d2={end:%Y%m%d}&i=d"
             txt=urllib.request.urlopen(url,timeout=20).read().decode()
             if not txt.startswith('Date'): print('gap fill (stooq) reply:',t,txt[:80].replace(chr(10),' '))
+            got={}
             for row in csv.DictReader(io.StringIO(txt)):
                 try: i=idx.get(_dt.datetime.strptime(row['Date'],'%Y-%m-%d'))
                 except (KeyError,ValueError): continue
-                if i is not None and ser[t][i] is None:
+                if i is not None: got[i]=row
+            ratio=_scale(t,{i:float(r_['Close']) for i,r_ in got.items()})
+            if ratio is None and got: print('gap fill (stooq): no overlap session to scale',t)
+            for i,row in got.items():
+                if ratio and ser[t][i] is None:
                     _put(t,i,float(row['Close']),float(row['High']),float(row['Low']),float(row.get('Volume') or 0),ratio)
         except Exception as e:
             print('gap fill (stooq) failed:',t,type(e).__name__,e)

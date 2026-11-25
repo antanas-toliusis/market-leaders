@@ -505,22 +505,22 @@ function fmtDate(s){const d=new Date(s+"T12:00:00Z");return d.toLocaleDateString
 // chart setups
 const SETUPS={
   vcp:{n:"VCP",b:"VCP",s:"Volatility contraction: each pullback in the base shallower than the last, volume drying up",
-    rule:"Stage 2 uptrend (above 50, 150 and 200-day, 200-day rising, within 25% of the 52-week high). A base of 5 weeks to 6 months with at least two major pullbacks, each at most 85% of the one before, the first 10–40% deep and the last 12% or less. 10-day volume under 85% of the 50-day. Close between 8% under and 3% over the pivot (the high before the last pullback).",
+    rule:"Stage 2 uptrend (above the 50, 150 and 200-day, 150-day above the 200-day, 200-day rising, at least 25% above the 52-week low and within 25% of the high). A base of 5 weeks to 6 months with at least two major pullbacks, each at most 85% of the one before, the first 10–40% deep and the last 12% or less. 10-day volume under 85% of the 50-day. Close between 8% under and 3% over the pivot (the high before the last pullback).",
     d:v=>`${v.d.map(x=>Math.round(x)+"%").join(" → ")} pullbacks over ${Math.round(v.bd/5)} wks, volume ${v.vr}× 50d`},
   cwh:{n:"Cup with handle",b:"Cup",s:"U-shaped cup 12–35% deep, then a short handle in the upper half on lighter volume",
-    rule:"Price above a rising 200-day. A 25%+ advance into the left lip, a cup 12–35% deep lasting at least 6 weeks with its low in the middle and at least a week spent in the bottom third (a U, not a V), the right side back within 10% of the left lip. Then a handle of 1–5 weeks, 3–15% deep, staying in the upper half of the cup, on below-average volume. Pivot: the top of the handle. Close between 8% under and 5% over it.",
+    rule:"Price above a rising 200-day, 50-day above the 200-day. A 25%+ advance into the left lip, a cup 12–35% deep lasting at least 6 weeks with its low in the middle and at least a week spent in the bottom third (a U, not a V), the right side back within 10% of the left lip. Then a handle of 1–5 weeks, 3–15% deep, staying in the upper half of the cup, on below-average volume. Pivot: the top of the handle. Close between 8% under and 5% over it.",
     d:v=>`cup ${v.cd}% over ${v.cw} wks, handle ${v.hd}% over ${v.hw} wks, handle volume ${v.vr}×`},
   cwm:{n:"Cup, handle at 50-day",b:"Cup@50",s:"A cup whose handle has pulled back to a rising 50-day and is holding it",
     rule:"Same cup as above (25%+ advance in, 12–35% deep, a U not a V, right side back within 90–115% of the left lip). The handle runs 1–10 weeks, is 3–18% deep and stays in the upper half of the cup. The close sits within 3% either side of the 50-day average, the 50-day is higher than 20 sessions ago, and no close in the last 10 sessions fell more than 3% below it. The close is 2–18% under the pivot (the right lip), so this finds support entries before the breakout.",
     d:v=>`cup ${v.cd}% over ${v.cw} wks, handle ${v.hd}% over ${v.hw} wks, ${v.md>0?"+":""}${v.md}% vs 50-day`},
   flat:{n:"Flat base",b:"Flat",s:"5+ weeks moving sideways in a range no deeper than 15%, after a 20%+ advance",
-    rule:"Price above a rising 200-day. The longest stretch ending today whose high-to-low range stays within 15%, at least 5 weeks long, coming after a 20%+ rise in the three months before it. Pivot: the top of the range. Close within 5% of it.",
+    rule:"Price above a rising 200-day, 50-day above the 200-day. The longest stretch ending today whose high-to-low range stays within 15%, at least 5 weeks long, coming after a 20%+ rise in the three months before it. Pivot: the top of the range before today, so a breakout day shows above it. Close within 5% either side of it.",
     d:v=>`${v.dp}% deep over ${v.w} wks`},
-  htf:{n:"High tight flag",b:"HTF",s:"Price roughly doubles in 4–8 weeks, then pulls back no more than 25%",
+  htf:{n:"High tight flag",b:"HTF",s:"Price roughly doubles in 3–8 weeks, then pulls back no more than 25%",
     rule:"A 90%+ gain within about 3–8 weeks (the pole), then a flag of 2–5 weeks that pulls back 5–25% and holds within 15% of the peak. Pivot: the peak. Rare among large caps.",
     d:v=>`+${v.g}% pole, flag ${v.fd}% over ${v.fw} wks`},
   twt:{n:"3-weeks-tight",b:"3WT",s:"Three weekly closes within 1.5% of each other: institutions holding",
-    rule:"Price above a rising 200-day and up 20%+ over the three months before. The last three completed weekly closes sit within 1.5% of each other. Pivot: the highest price of those three weeks. Close within 5% of it.",
+    rule:"Price above a rising 200-day, 50-day above the 200-day, and up 20%+ over the three months before. The last three completed weekly closes sit within 1.5% of each other. Pivot: the highest price of those three weeks. Close within 5% of it.",
     d:v=>`weekly closes within ${v.tr}%`},
   pp:{n:"Pocket pivot",b:"PP",s:"An up day on volume above every down day of the prior 10 sessions",
     rule:"In the last 5 sessions: an up day whose volume beats the biggest down-day volume of the 10 sessions before it, closing in the upper half of its range, above the 50-day and no more than 5% above the 10-day average. It is an early buy signal inside a base, so the pivot shown is that day's high.",
@@ -566,7 +566,7 @@ const SCANNERS=[
    test:x=>x.chg>=0.08&&x.rv50>=3,d:x=>`${pct(x.chg,1)} on ${x.rv50.toFixed(1)}× 50-day volume`},
   {id:"dist",n:"Distribution day in a leader",s:"A leader down 4% or more on 2× or more its 50-day average volume: a warning",
    test:x=>x.lead&&x.chg<=-0.04&&x.rv50>=2,d:x=>`${pct(x.chg,1)} on ${x.rv50.toFixed(1)}× 50-day volume`},
-  {id:"burst",n:"Momentum burst",s:"Up 25% or more over 20 sessions, with volume over that stretch above the 50 sessions before it",
+  {id:"burst",n:"Momentum burst",s:"Up 25% or more over 20 sessions, on average volume at least 1.2× that of the 50 sessions before",
    test:x=>x.g20>=0.25&&x.vbr>=1.2,d:x=>`${pct(x.g20,0)} in 20 sessions, volume ${x.vbr.toFixed(1)}× prior`},
   {id:"nr7",n:"Tight day (NR7) in a leader",s:"The narrowest daily range of the last 7 sessions, in a leader above its 50-day and within 15% of its high",
    test:x=>x.nr7&&x.lead&&x.d50!=null&&x.d50>0&&x.offHi>=-0.15,d:x=>`narrowest range in 7 days, ${pct(x.offHi,1)} from high`},
@@ -746,7 +746,7 @@ function renderWeekly(){
   $("wrOut").innerHTML=miniTable(left.slice(0,12),[ratingCell,was,wkCell],"No leaders dropped out this week.")+(left.length>12?`<div class="note">and ${left.length-12} more</div>`:"");
   $("wrUp").innerHTML=miniTable(lead.filter(r=>r.wR>0).sort((a,b)=>b.wR-a.wR).slice(0,10),[ratingCell,dR,wkCell],"No rating gains this week.");
   $("wrDn").innerHTML=miniTable(lead.filter(r=>r.wR<0).sort((a,b)=>a.wR-b.wR).slice(0,10),[ratingCell,dR,wkCell],"No rating drops this week.");
-  const from=D.dates[w.start],to=D.dates[w.end],bo=boGroups().filter(e=>e.bd>=from&&e.bd<=to).sort((a,b)=>b.bv-a.bv);
+  const from=D.dates[w.start],to=D.dates[w.end],bo=boGroups().filter(e=>e.bd>=from&&e.bd<=to).sort((a,b)=>(b.bv??0)-(a.bv??0));
   $("wrBo").textContent=bo.length;$("wrBoN").textContent=bo.length?`${bo.filter(e=>e.st==="holding").length} still above the pivot, ${bo.filter(e=>(e.bv??0)>=VOLX).length} on 1.4×+ volume`:"none this week";
   const byT=new Map(D.stocks.map(s=>[s.t,s]));
   $("wrBoList").innerHTML=bo.length?`<div class="tblwrap"><table class="mini"><tbody>${bo.map(e=>`<tr tabindex="0" data-t="${esc(e.t)}"><td class="tk"><b>${esc(e.t)}</b><span>${esc(byT.get(e.t)?.n||"")}</span></td><td class="l">${fmtDate(e.bd)}</td><td class="l">${e.ks.map(k=>`<span class="pill st">${SETUPS[k].b}</span>`).join(" ")}</td><td>pivot ${e.p.toFixed(2)}</td><td>vol ${e.bv==null?"–":e.bv.toFixed(1)+"×"}</td><td class="${e.g?cls(e.g):""}">${e.g>0?"+":""}${e.g}% since</td><td class="l">${STATUS[e.st]}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No breakouts from setups during this week.</div>`;
@@ -803,13 +803,15 @@ $("viewDaily").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.tar
 
 // detail
 // The list a chart was opened from (the rows of that table, in their current order), for ‹ › navigation.
-let navList=[],navIdx=-1;
-document.addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr&&!tr.closest(".sheet"))navList=[...tr.parentElement.querySelectorAll("tr[data-t]")].map(x=>x.dataset.t)},true);
-document.addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest&&e.target.closest("tr[data-t]");if(tr)navList=[...tr.parentElement.querySelectorAll("tr[data-t]")].map(x=>x.dataset.t)}},true);
+let navList=[],navIdx=-1,navAt=null;
+// remember the list and the clicked row's position in it (a ticker can appear twice, e.g. two breakouts)
+const navFrom=tr=>{const rows=[...tr.parentElement.querySelectorAll("tr[data-t]")];navList=rows.map(x=>x.dataset.t);navAt=rows.indexOf(tr)};
+document.addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr&&!tr.closest(".sheet"))navFrom(tr)},true);
+document.addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest&&e.target.closest("tr[data-t]");if(tr)navFrom(tr)}},true);
 function navTo(step){
   const i=navIdx+step;if(i<0||i>=navList.length)return;
   const sh=document.querySelector(".sheet");sh.classList.remove("slide-l","slide-r");void sh.offsetWidth;sh.classList.add(step>0?"slide-l":"slide-r");
-  openDetail(navList[i],true);
+  navAt=i;openDetail(navList[i],true);
 }
 function openDetail(t,keepFocus){
   const r=C.rows.find(x=>x.t===t);if(!r)return;
@@ -820,7 +822,7 @@ function openDetail(t,keepFocus){
   {const pk=r.st&&ST_ORDER.find(x=>r.st[x]);$("dVcpLeg").hidden=!pk;if(pk)$("dVcpTxt").textContent=`${SETUPS[pk].n} pivot, across the pattern`}
   $("scrim").classList.add("open");document.body.style.overflow="hidden";
   detailRow=r;
-  navIdx=navList.indexOf(t);if(navIdx<0){navList=[t];navIdx=0}
+  navIdx=navAt!=null&&navList[navAt]===t?navAt:navList.indexOf(t);navAt=null;if(navIdx<0){navList=[t];navIdx=0}
   $("dPos").textContent=navList.length>1?`${navIdx+1} / ${navList.length}`:"";
   $("dPrev").disabled=navIdx<=0;$("dNext").disabled=navIdx>=navList.length-1;
   $("dPrev").hidden=$("dNext").hidden=navList.length<2;
