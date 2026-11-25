@@ -858,12 +858,12 @@ function chart(cv,series,col,ref100,rs,dates,cd){
     }
   }
   if(cd){ // candles (wick low-high, body open-close) or OHLC bars (open tick left, close tick right); green up, red down
-    const slot=(W-L-R)/Math.max(1,n-1),bw=Math.max(1,Math.min(14,slot*0.7));
+    const slot=(W-L-R)/Math.max(1,n-1),bw=Math.max(1,Math.min(14,slot*0.7)),barW=Math.max(1.6,Math.min(3.5,slot*0.45));
     for(let i=0;i<n;i++){const c=cd.c[i];if(c==null)continue;
       const o=cd.o[i]??c,hi=cd.h[i]??Math.max(o,c),lo=cd.l[i]??Math.min(o,c),up=c>=o,xx=x(i);
-      g.strokeStyle=g.fillStyle=up?cd.up:cd.down;g.lineWidth=1;
+      g.strokeStyle=g.fillStyle=up?cd.up:cd.down;g.lineWidth=cd.bars?barW:1;
       g.beginPath();g.moveTo(Math.round(xx)+.5,y(hi));g.lineTo(Math.round(xx)+.5,y(lo));g.stroke();
-      if(cd.bars){const tk=Math.max(1.5,bw/2),px=Math.round(xx)+.5;g.lineWidth=Math.max(1,Math.min(2,slot*0.25));
+      if(cd.bars){const tk=Math.max(2,slot*0.5),px=Math.round(xx)+.5;
         g.beginPath();g.moveTo(px-tk,y(o));g.lineTo(px,y(o));g.moveTo(px,y(c));g.lineTo(px+tk,y(c));g.stroke();continue}
       const top=y(Math.max(o,c)),bh=Math.max(1,Math.abs(y(o)-y(c)));g.fillRect(xx-bw/2,top,bw,bh);}
   }
