@@ -7,7 +7,7 @@ members=[r[0] for r in c.sql("""select ticker from 'data/membership_intervals.pa
 meta={}
 for r in csv.DictReader(open('data/constituents.csv')):
     meta[r['Symbol'].replace('.','-')]=(r['Security'],r['GICS Sector'],r['GICS Sub-Industry'])
-bench=['SPY','RSP','QQQ']
+bench=['RSP','SPY']   # RSP (equal-weight S&P 500) is the site's benchmark
 dates=[r[0] for r in c.sql("select distinct date from 'data/prices.parquet' where ticker='SPY' order by date desc limit 300").fetchall()][::-1]
 d0=dates[0]
 tick=members+bench
@@ -51,8 +51,8 @@ for t in members:
         for e in ev: e['t']=t; events.append(e)
     for k in st: counts[k]=counts.get(k,0)+1
     out['stocks'].append(rec)
-# breakouts from setups: add the S&P 500's move since each breakout for context
-spy=out['bench']['SPY']
+# breakouts from setups: add the benchmark's (RSP) move since each breakout for context
+spy=out['bench']['RSP']
 for e in events:
     e['sp']=round((spy[-1]/spy[e.pop('bi')]-1)*100,1)
 # One breakout per stock and setup per base: drop a later breakout through a pivot

@@ -166,12 +166,6 @@ canvas{width:100%;display:block}
       <div class="sub" id="asof">S&amp;P 500 members ranked by relative strength. Loading prices…</div>
     </div>
     <div class="controls">
-      <span class="lbl">Index</span>
-      <div class="seg" id="benchSeg" role="group" aria-label="Benchmark index">
-        <button type="button" data-v="SPY" aria-pressed="true">S&amp;P 500</button>
-        <button type="button" data-v="RSP" aria-pressed="false">Equal-wt</button>
-        <button type="button" data-v="QQQ" aria-pressed="false">Nasdaq-100</button>
-      </div>
       <span class="lbl">Lookback</span>
       <div class="seg" id="lbSeg" role="group" aria-label="Lookback period">
         <button type="button" data-v="w" aria-pressed="true">RS 12M wtd</button>
@@ -249,7 +243,7 @@ canvas{width:100%;display:block}
     <section class="panel">
       <div class="ph"><h2>Setup scorecard</h2><div class="filters"><span class="hint" id="scHint"></span><div class="seg" id="scSeg" role="group" aria-label="Which breakouts to score"><button type="button" data-v="all" aria-pressed="true">All breakouts</button><button type="button" data-v="vol" aria-pressed="false">Volume-confirmed (≥1.4×)</button></div></div></div>
       <div class="tblwrap"><table>
-        <thead><tr><th class="l">Setup</th><th title="Separate setup episodes found in the window">Signals</th><th title="Closed above the pivot within 20 sessions of the last signal (with the volume switch on, only on 1.4× average volume or more)">Broke out</th><th>Breakout rate</th><th title="Average change from breakout-day close to the latest close">Avg since breakout</th><th title="Average change minus the S&amp;P 500 over the same days">Avg vs S&amp;P 500</th><th>Still above pivot</th><th title="Average result if bought at the breakout-day close and sold at the first close more than 8% lower; otherwise held to the latest close">Avg with −8% stop</th><th title="Closed more than 8% under the breakout-day close">Stopped out</th></tr></thead>
+        <thead><tr><th class="l">Setup</th><th title="Separate setup episodes found in the window">Signals</th><th title="Closed above the pivot within 20 sessions of the last signal (with the volume switch on, only on 1.4× average volume or more)">Broke out</th><th>Breakout rate</th><th title="Average change from breakout-day close to the latest close">Avg since breakout</th><th title="Average change minus the equal-weight S&amp;P 500 over the same days">Avg vs index</th><th>Still above pivot</th><th title="Average result if bought at the breakout-day close and sold at the first close more than 8% lower; otherwise held to the latest close">Avg with −8% stop</th><th title="Closed more than 8% under the breakout-day close">Stopped out</th></tr></thead>
         <tbody id="scTb"></tbody></table></div>
       <div class="note">Each day in the window was scanned using only the data available that day. Pocket pivots are entry days rather than bases, so they are not scored. Past results in one market spell say little about the next.</div>
     </section>
@@ -290,14 +284,14 @@ canvas{width:100%;display:block}
         <div class="filters" id="boWin"><button type="button" class="chip" data-w="5" aria-pressed="false">Last 5 days</button><button type="button" class="chip" data-w="20" aria-pressed="false">20 days</button><button type="button" class="chip" data-w="60" aria-pressed="true">60 days</button><button type="button" class="chip" id="boVolOnly" aria-pressed="false" title="Breakout-day volume at least 1.4× its 50-day average">Volume-confirmed (≥1.4×)</button></div></div>
       <div class="note" id="boNote"></div>
       <div class="tblwrap"><table>
-        <thead><tr><th class="l">Breakout</th><th class="l tk">Stock</th><th class="l">From setup</th><th>Pivot</th><th title="Breakout-day volume vs its 50-day average">Volume</th><th>Since breakout</th><th>Best since</th><th title="S&amp;P 500 change over the same period">S&amp;P 500 since</th><th class="l">Status</th></tr></thead>
+        <thead><tr><th class="l">Breakout</th><th class="l tk">Stock</th><th class="l">From setup</th><th>Pivot</th><th title="Breakout-day volume vs its 50-day average">Volume</th><th>Since breakout</th><th>Best since</th><th title="Equal-weight S&amp;P 500 (RSP) change over the same period">Index since</th><th class="l">Status</th></tr></thead>
         <tbody id="boTb"></tbody></table></div>
       <div class="empty" id="boEmpty" hidden>No breakouts in this window.</div>
     </section>
   </div>
 
   <p class="foot">
-    <b>How it works.</b> Every number is calculated from daily split- and dividend-adjusted closes.
+    <b>How it works.</b> The benchmark is the <b>equal-weight S&amp;P 500 (RSP)</b>, which tracks the typical member rather than the few largest companies, so beating it means beating the average stock. Every number is calculated from daily split- and dividend-adjusted closes.
     <b>Relative performance</b> is the stock's return divided by the index's return over the same window ((1+stock)/(1+index) − 1).
     <b>RS 12M weighted</b> follows the IBD convention: 40% weight on the latest quarter and 20% on each of the three before it.
     <b>RS rating</b> is that weighted score's percentile among all S&amp;P 500 members (1–99); the index's own rating is shown in the summary, and only stocks above it are listed.
@@ -325,7 +319,7 @@ canvas{width:100%;display:block}
 
 <script>
 (function(){
-let D=null, bench="SPY", lb="w", sortK="rating", sortDir=-1, sector=null, showAll=false;
+let D=null, bench="RSP", lb="w", sortK="rating", sortDir=-1, sector=null, showAll=false;
 const F={rs80:false,nh:false,trend:false,near:false,nearma:false,setup:false};
 const $=id=>document.getElementById(id);
 const pct=(v,d=1)=>v==null||!isFinite(v)?"–":(v>0?"+":"")+(v*100).toFixed(d)+"%";
@@ -470,7 +464,7 @@ function renderStrat(){
   renderScorecard();
   const pool=C.rows.filter(r=>r.st&&(!stLead||r.beats)&&(!stRS||(r.rating??0)>=80));
   const cnt=k=>pool.filter(r=>k==="all"||r.st[k]).length;
-  $("stNote").textContent=`Prices to the close of ${fmtDate(D.asOf)}. ${stLead?"Showing only stocks whose relative strength beats the index you picked at the top.":"Showing all S&P 500 stocks, leaders or not."} These are rules-based scans: check the chart before acting on any of them.`;
+  $("stNote").textContent=`Prices to the close of ${fmtDate(D.asOf)}. ${stLead?"Showing only stocks whose relative strength beats the equal-weight S&P 500.":"Showing all S&P 500 stocks, leaders or not."} These are rules-based scans: check the chart before acting on any of them.`;
   $("stCards").innerHTML=[["all",{n:"All setups",s:"Any of the patterns below"}],...ST_ORDER.map(k=>[k,SETUPS[k]])].map(([k,s])=>{const c=cnt(k);return `<button type="button" class="scard" data-k="${k}" aria-pressed="${stSel===k}"><span class="top"><b>${esc(s.n)}</b><span class="num${c?"":" zero"}">${c}</span></span><p>${esc(s.s)}</p></button>`}).join("");
   const list=pool.filter(r=>stSel==="all"||r.st[stSel]).sort((a,b)=>(b.rating??0)-(a.rating??0));
   $("stListTitle").textContent=`${stSel==="all"?"All setups":SETUPS[stSel].n}: ${list.length} stock${list.length===1?"":"s"}`;
@@ -543,7 +537,7 @@ function renderDaily(){
   const date=D.dates[N-1-dyK],pdate=D.dates[N-2-dyK];
   const nm={SPY:"S&P 500",RSP:"S&P 500 equal-weight",QQQ:"Nasdaq-100"}[bench];
   $("dyTitle").textContent=`Daily update, ${fmtDate(date)}`;
-  $("dyNote").textContent=`Close of ${fmtDate(date)} compared with ${fmtDate(pdate)}. Leaders are stocks beating the ${nm} on ${LB[lb]}; change the index or lookback at the top and this page follows.`;
+  $("dyNote").textContent=`Close of ${fmtDate(date)} compared with ${fmtDate(pdate)}. Leaders are stocks beating the ${nm} on ${LB[lb]}; change the lookback at the top and this page follows.`;
   const lead=T.rows.filter(r=>r.beats),plead=P.rows.filter(r=>r.beats);
   const joined=lead.filter(r=>!prev.get(r.t)?.beats).sort((a,b)=>(b.rating??0)-(a.rating??0));
   const left=T.rows.filter(r=>!r.beats&&prev.get(r.t)?.beats).sort((a,b)=>(b.rating??0)-(a.rating??0));
@@ -650,7 +644,6 @@ function fmtN(v){return Math.abs(v)>=1000?Math.round(v).toLocaleString("en-GB"):
 
 // events
 function segBind(id,cb){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)})}
-segBind("benchSeg",v=>{bench=v;render()});
 segBind("lbSeg",v=>{lb=v;sortK="rating";sortDir=-1;render()});
 $("filters").addEventListener("click",e=>{const b=e.target.closest("button[data-f]");if(!b)return;F[b.dataset.f]=!F[b.dataset.f];b.setAttribute("aria-pressed",F[b.dataset.f]);renderTable()});
 $("q").addEventListener("input",renderTable);
