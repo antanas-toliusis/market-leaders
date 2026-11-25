@@ -815,7 +815,9 @@ async function drawDetail(r){
   {const z=rs[rs.length-1];$("dRsNow").textContent=z&&f?`RS line ${z/f*100>=100?"+":""}${(z/f*100-100).toFixed(0)}% vs index over the chart${nh?", at a 52-week high":""}`:""}
   volChart($("cVol"),c,v,col,volN);
   const vv=v.filter(x=>x!=null),last=vv[vv.length-1],avg=vv.slice(-volN-1,-1).reduce((a,b)=>a+b,0)/volN;
-  $("dVolNow").textContent=last&&avg?`Latest ${chartTf==="w"?"week":"day"}: ${(last/avg).toFixed(1)}× its ${volN}-${chartTf==="w"?"week":"day"} average`:"";
+  if(chartTf==="w"&&W.partial){const lastD=D.dates[D.dates.length-1],nS=D.dates.filter(d=>isoWeek(d)===isoWeek(lastD)).length;
+    $("dVolNow").textContent=last&&avg?`This week so far (${nS} of 5 sessions): ${(last/avg).toFixed(1)}× a full week's average`:"";}
+  else $("dVolNow").textContent=last&&avg?`Latest ${chartTf==="w"?"week":"day"}: ${(last/avg).toFixed(1)}× its ${volN}-${chartTf==="w"?"week":"day"} average`:"";
 }
 $("dTf").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!detailRow)return;chartTf=b.dataset.v;drawDetail(detailRow)});
 function closeDetail(){$("scrim").classList.remove("open");document.body.style.overflow=""}
