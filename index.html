@@ -692,8 +692,7 @@ function renderBreakouts(){
 }
 $("boWin").addEventListener("click",e=>{const b=e.target.closest("button[data-w]");if(!b)return;boW=+b.dataset.w;$("boWin").querySelectorAll("button[data-w]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderBreakouts()});
 $("boVolOnly").addEventListener("click",e=>{boVol=!boVol;e.currentTarget.setAttribute("aria-pressed",boVol);renderBreakouts()});
-$("boPanel").addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});
-$("boPanel").addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}});
+// rows in the Breakouts and weekly-review panels open through #viewDaily's listener (they sit inside it)
 $("scSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;scVol=b.dataset.v==="vol";$("scSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderScorecard()});
 function renderScorecard(){
   const ev=(D.bo||[]).filter(x=>!scVol||(x.bv??0)>=VOLX),ep=D.ep||{};
@@ -752,7 +751,6 @@ function renderWeekly(){
   $("wrBoList").innerHTML=bo.length?`<div class="tblwrap"><table class="mini"><tbody>${bo.map(e=>`<tr tabindex="0" data-t="${esc(e.t)}"><td class="tk"><b>${esc(e.t)}</b><span>${esc(byT.get(e.t)?.n||"")}</span></td><td class="l">${fmtDate(e.bd)}</td><td class="l">${e.ks.map(k=>`<span class="pill st">${SETUPS[k].b}</span>`).join(" ")}</td><td>pivot ${e.p.toFixed(2)}</td><td>vol ${e.bv==null?"–":e.bv.toFixed(1)+"×"}</td><td class="${e.g?cls(e.g):""}">${e.g>0?"+":""}${e.g}% since</td><td class="l">${STATUS[e.st]}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No breakouts from setups during this week.</div>`;
 }
 $("wrWeeks").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;wrK=+b.dataset.k;renderWeekly()});
-["wrIn","wrOut","wrUp","wrDn","wrBoList"].forEach(id=>{$(id).addEventListener("click",e=>{const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)});$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){const tr=e.target.closest("tr[data-t]");if(tr)openDetail(tr.dataset.t)}})});
 function renderDaily(){
   renderBreakouts();
   renderWeekly();
@@ -822,7 +820,7 @@ function openDetail(t,keepFocus){
   {const pk=r.st&&ST_ORDER.find(x=>r.st[x]);$("dVcpLeg").hidden=!pk;if(pk)$("dVcpTxt").textContent=`${SETUPS[pk].n} pivot, across the pattern`}
   $("scrim").classList.add("open");document.body.style.overflow="hidden";
   detailRow=r;
-  navIdx=navAt!=null&&navList[navAt]===t?navAt:navList.indexOf(t);navAt=null;if(navIdx<0){navList=[t];navIdx=0}
+  navIdx=navAt!=null&&navList[navAt]===t?navAt:navList.indexOf(t);if(navIdx<0){navList=[t];navIdx=0}
   $("dPos").textContent=navList.length>1?`${navIdx+1} / ${navList.length}`:"";
   $("dPrev").disabled=navIdx<=0;$("dNext").disabled=navIdx>=navList.length-1;
   $("dPrev").hidden=$("dNext").hidden=navList.length<2;
