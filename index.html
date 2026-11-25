@@ -578,12 +578,12 @@ const WSCANNERS=[
    test:x=>x.chg>0&&x.v>0&&x.v>=x.maxv10,d:x=>`${pct(x.chg,1)} week on the biggest volume in 11 weeks`},
   {id:"wpower",n:"Weekly power bar",s:"Up 10% or more on the week on above-average weekly volume",
    test:x=>x.chg>=0.10&&x.rv>=1,d:x=>`${pct(x.chg,1)} week on ${x.rv.toFixed(1)}× 10-week volume`},
-  {id:"w10",n:"Support at the 10-week line",s:"A leader dipping to a rising 10-week line and closing in the upper half of the week's range",
-   test:x=>x.lead&&x.ma10&&x.ma10up&&x.l<=x.ma10*1.01&&x.px>=x.ma10&&x.pos>=0.5,d:x=>`low ${pct(x.l/x.ma10-1,1)} vs 10-week, closed ${Math.round(x.pos*100)}% up the range`},
+  {id:"w12",n:"Support at the 12-week line",s:"A leader dipping to a rising 12-week line and closing in the upper half of the week's range",
+   test:x=>x.lead&&x.ma12&&x.ma12up&&x.l<=x.ma12*1.01&&x.px>=x.ma12&&x.pos>=0.5,d:x=>`low ${pct(x.l/x.ma12-1,1)} vs 12-week, closed ${Math.round(x.pos*100)}% up the range`},
   {id:"wor",n:"Weekly outside reversal",s:"Takes out the prior week's high and low, then closes lower in the bottom half: a warning",
    test:x=>x.h>x.ph&&x.l<x.pl&&x.px<x.pc&&x.pos<0.5,d:x=>`outside week, closed ${pct(x.chg,1)} in the bottom half`},
-  {id:"w3t",n:"3-weeks-tight",s:"Three weekly closes within 1.5% of each other, above the 40-week line",
-   test:x=>x.tight!=null&&x.tight<=0.015&&x.ma40&&x.px>x.ma40,d:x=>`weekly closes within ${(x.tight*100).toFixed(2)}%`},
+  {id:"w3t",n:"3-weeks-tight",s:"Three weekly closes within 1.5% of each other, above the 72-week line",
+   test:x=>x.tight!=null&&x.tight<=0.015&&x.ma72&&x.px>x.ma72,d:x=>`weekly closes within ${(x.tight*100).toFixed(2)}%`},
 ];
 function wscanRows(i){
   const N=D.dates.length,wk=W.weeks,rows=[],di=D.dates.indexOf(wk[i]),k=di>=0?N-1-di:null,byT=k!=null?new Map(snap(k).rows.map(r=>[r.t,r])):new Map();
@@ -595,7 +595,7 @@ function wscanRows(i){
     const cl3=c.slice(i-2,i+1);
     rows.push({t:s.t,n:s.n,s:s.s,px:c[i],chg:c[i]/c[i-1]-1,v:v[i],vol:v[i]*1000,a10:n?a/n*1000:null,rv:n?v[i]/(a/n):null,maxv10:mxv,
       rating:r.rating,lead:r.beats?1:0,st:lastW?r.st:null,h:hh[i],l:ll[i],ph:hh[i-1],pl:ll[i-1],pc:c[i-1],
-      pos:hh[i]>ll[i]?(c[i]-ll[i])/(hh[i]-ll[i]):0.5,ma10:sma(c,10,i),ma10up:sma(c,10,i)>sma(c,10,i-1),ma40:sma(c,40,i),
+      pos:hh[i]>ll[i]?(c[i]-ll[i])/(hh[i]-ll[i]):0.5,ma12:sma(c,12,i),ma12up:sma(c,12,i)>sma(c,12,i-1),ma72:sma(c,72,i),
       tight:cl3.includes(null)?null:(Math.max(...cl3)-Math.min(...cl3))/Math.min(...cl3)});
   }
   return rows;
