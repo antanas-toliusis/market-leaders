@@ -845,12 +845,16 @@ function chart(cv,series,col,ref100,rs,dates,cd){
   const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=+(cv.dataset.h??=cv.getAttribute("height"));
   cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   const all=series.flatMap(s=>s.d).concat(cd?cd.h.concat(cd.l,cd.c):[]).filter(v=>v!=null);let mn=Math.min(...all),mx=Math.max(...all);const pad=(mx-mn)*.06||1;mn-=pad;mx+=pad;
-  const L=46,R=8,T=8,B=20,n=cd?cd.c.length:series[0].d.length;
+  const n=cd?cd.c.length:series[0].d.length,L=46,R=8,T=8;
+  // daily charts get a date at the start of every week; tilt the labels when they would overlap
+  const daily=dates.length>1&&Date.parse(dates[1])-Date.parse(dates[0])<5*864e5;
+  const wkTicks=daily?dates.map((d,i)=>i>0&&isoWeek(d)!==isoWeek(dates[i-1])?i:-1).filter(i=>i>=0):[];
+  const tilt=daily&&(W-L-R)/Math.max(1,wkTicks.length)<50,B=tilt?44:20;
   const x=i=>L+(i/(n-1))*(W-L-R),y=v=>T+(1-(v-mn)/(mx-mn))*(H-T-B);
   g.font="11px "+col("--f-mono");g.fillStyle=col("--muted");g.strokeStyle=col("--line");g.lineWidth=1;
   const step=nice((mx-mn)/4);for(let v=Math.ceil(mn/step)*step;v<=mx;v+=step){g.beginPath();g.moveTo(L,y(v));g.lineTo(W-R,y(v));g.stroke();g.textAlign="right";g.fillText(fmtN(v),L-6,y(v)+4)}
   if(ref100&&100>mn&&100<mx){g.setLineDash([4,4]);g.strokeStyle=col("--muted");g.beginPath();g.moveTo(L,y(100));g.lineTo(W-R,y(100));g.stroke();g.setLineDash([])}
-  dateAxis(g,dates,x,col,T,H,B);
+  if(daily)weekAxis(g,dates,wkTicks,x,col,T,H,B,tilt);else dateAxis(g,dates,x,col,T,H,B);
   if(rs){ // RS line on its own scale in the lower 40% of the plot, under the price lines
     const vals=rs.d.filter(v=>v!=null);if(vals.length>1){
       const rmn=Math.min(...vals),rmx=Math.max(...vals),top=T+(H-T-B)*0.58,bot=H-B-4;
@@ -890,6 +894,16 @@ function volChart(cv,c,v,col,avgN=50,start=0){
 }
 function fmtVol(x){return x>=1e9?(x/1e9).toFixed(1)+"B":x>=1e6?(x/1e6).toFixed(0)+"M":x>=1e3?(x/1e3).toFixed(0)+"K":String(x)}
 // Date labels: the finest step (half-month, month, 2 months, quarter) that gives at most ~10 labels.
+// Daily charts: a gridline and date at the first session of each week (stronger at month starts).
+function weekAxis(g,dates,pos,x,col,T,H,B,tilt){
+  g.save();g.strokeStyle=col("--line");g.lineWidth=1;
+  for(const i of pos){const xx=Math.round(x(i))+.5,ms=dates[i].slice(5,7)!==dates[i-1].slice(5,7);g.globalAlpha=ms?.9:.4;g.beginPath();g.moveTo(xx,T);g.lineTo(xx,H-B);g.stroke()}
+  g.restore();g.fillStyle=col("--muted");
+  for(const i of pos){const dt=new Date(dates[i]+"T12:00:00Z"),ny=dates[i].slice(0,4)!==dates[i-1].slice(0,4);
+    const t=dt.toLocaleDateString("en-GB",ny?{day:"numeric",month:"short",year:"2-digit"}:{day:"numeric",month:"short"});
+    if(tilt){g.save();g.translate(x(i),H-B+8);g.rotate(-Math.PI/4);g.textAlign="right";g.fillText(t,0,4);g.restore()}
+    else{g.textAlign="center";g.fillText(t,x(i),H-5)}}
+}
 function dateAxis(g,dates,x,col,T,H,B){
   const key={half:d=>d.slice(0,7)+(+d.slice(8,10)>=15?"b":"a"),m1:d=>d.slice(0,7),m2:d=>d.slice(0,4)+Math.floor((+d.slice(5,7)-1)/2),q:d=>d.slice(0,4)+Math.floor((+d.slice(5,7)-1)/3)};
   const ticks=k=>{const t=[];dates.forEach((d,i)=>{if(i>0&&key[k](d)!==key[k](dates[i-1]))t.push(i)});return t};
