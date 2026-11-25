@@ -861,7 +861,8 @@ function fitPriceHeight(){
   const pad=parseFloat(getComputedStyle(scrim).paddingTop)+parseFloat(getComputedStyle(scrim).paddingBottom);
   const others=sheet.scrollHeight-cv.offsetHeight;
   let hgt=Math.floor(innerHeight-pad-others-2);
-  hgt=Math.max(300,Math.min(720,hgt,cv.clientWidth<600?Math.round(cv.clientWidth*1.3):720));
+  const wd=cv.clientWidth||sheet.clientWidth;   // the canvas can still read 0 wide on the first open
+  hgt=Math.max(300,Math.min(720,hgt,wd<600?Math.round(wd*1.3):720));
   cv.dataset.h=hgt;
 }
 addEventListener("resize",()=>{if(detailRow&&$("scrim").classList.contains("open"))drawDetail(detailRow)});
